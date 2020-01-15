@@ -1,0 +1,302 @@
+215  /********************************************************************
+216  * Job Name: read_raw_ndc_product.sas
+217  * Job Desc: code to read raw txt related to ndc - specific to product
+218  *           data and fields.
+219  * COPYRIGHT (c) 2019 2020 Johns Hopkins University - HutflessLab 2019
+220  ********************************************************************/
+221
+222  %global  raw_data_path     ;
+223  %global  raw_data_product  ;
+224  %global  raw_product       ;
+225  %let     raw_data_path     = C:\z_data\z_client_jhu\ndc\;
+226  %let     raw_data_product  = product.txt;
+227  %let     raw_product       = &raw_data_path.&raw_data_product;
+228
+229
+230  %global  perm_lib          ;
+231  %global  lwork             ;
+232  %global  out_ds            ;
+233  %global  out_ds_to_scan    ;
+234  %let     perm_lib          =ndcprod        ;
+235  %let     lwork             =work           ;
+236  %let     out_ds            =ndc_product    ;
+237  %let     out_ds_to_scan    =ndc_prod_scan  ;
+238
+239  libname &perm_lib "C:\z_data\z_client_jhu\ndc_puf_short_term";
+NOTE: Libref NDCPROD was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: C:\z_data\z_client_jhu\ndc_puf_short_term
+240
+241  %global  prod_id           ;
+242  %global  prod_ndc          ;
+243  %let     prod_id           =productid      ;
+244  %let     prod_ndc          =productndc     ;
+245
+246
+247  %macro read_in_raw_to_get_sasds(raw_in_data   = ,
+248                                  local_out_ds  = ,
+249                                  local_prod_id = ,
+250                                  local_prod_ndc= );
+251     data &local_out_ds ;
+252         infile "&raw_in_data"
+253         delimiter='09'x MISSOVER DSD lrecl=32767 firstobs=2 ;
+254
+255         /*** these are fields in the ndc product table raw data ***/
+256         /*** these are properties of the fields as observed on  ***/
+257         /*** or about 2019/11 - if the file, fields are updated ***/
+258         /*** you will need to re/verify field properties        ***/
+259
+260            /*** the informat and format are not related to the sequence of columns in data ***/
+261            informat &local_prod_id                    $46.  ; format &local_prod_id
+261! $46.  ;
+262            informat &local_prod_ndc                   $10.  ; format &local_prod_ndc
+262! $10.  ;
+263            informat product_type_nm                   $30.  ; format product_type_nm
+263! $30.  ;
+264            informat proprietary_nm                   $200.  ; format proprietary_nm
+264! $200.  ;
+265            informat proprietary_nm_sfx               $200.  ; format proprietary_nm_sfx
+265! $200.  ;
+266            informat non_proprietary_nm               $600.  ; format non_proprietary_nm
+266! $600.  ;
+267            informat dosage_form_nm                    $50.  ; format dosage_form_nm
+267! $50.  ;
+268            informat route_nm                         $100.  ; format route_nm
+268! $100.  ;
+269            informat market_beg_dt              anydtdte21.  ; format market_beg_dt
+269! yymmdd10. ;
+270            informat market_end_dt              anydtdte21.  ; format market_end_dt
+270! yymmdd10. ;
+271            informat market_cat_nm                     $50.  ; format market_cat_nm
+271! $50.  ;
+272            informat app_number                        $15.  ; format app_number
+272! $15.  ;
+273            informat labeler_nm                       $150.  ; format labeler_nm
+273! $150.  ;
+274            informat substance_nm                    $4000.  ; format substance_nm
+274! $4000.  ;
+275            informat active_numert_strn               $800.  ; format active_numert_strn
+275! $800.  ;
+276            informat active_ingred_unit              $3000.  ; format active_ingred_unit
+276! $3000.  ;
+277            informat pharm_classes                    $150.  ; format pharm_classes
+277! $150.  ;
+278            informat dea_schedule                       $5.  ; format dea_schedule
+278!  $5.  ;
+279            informat ndc_exclude_flag                   $1.  ; format ndc_exclude_flag
+279!  $1.  ;
+280            informat listing_rec_cert_thru      anydtdte21.  ; format listing_rec_cert_thru
+280! yymmdd10. ;
+281
+282         /*** the input section and sequence is related to column and raw data sequence ***/
+283         /*** the field sequence and list of fields here in input section must be verified ***/
+284         input
+285            &local_prod_id             $
+286            &local_prod_ndc            $
+287            product_type_nm            $
+288            proprietary_nm             $
+289            proprietary_nm_sfx         $
+290            non_proprietary_nm         $
+291            dosage_form_nm             $
+292            route_nm                   $
+293            market_beg_dt
+294            market_end_dt
+295            market_cat_nm              $
+296            app_number                 $
+297            labeler_nm                 $
+298            substance_nm               $
+299            active_numert_strn         $
+300            active_ingred_unit         $
+301            pharm_classes              $
+302            dea_schedule               $
+303            ndc_exclude_flag           $
+304            listing_rec_cert_thru
+305         ;
+306
+307         /*** var - field prep ***/
+308         /*** actions performed on these vars must also be done ***/
+309         /*** on any other table of data with same vars and     ***/
+310         /*** especially if you will merge or join tables       ***/
+311         /*** these same actions will be set on ndc Package     ***/
+312         &local_prod_id   =upcase(&local_prod_id       );
+313         &local_prod_ndc  =upcase(&local_prod_ndc      );
+314         &local_prod_ndc  =compress(&local_prod_ndc,'-');
+315     run;
+316
+317      proc sort data= &local_out_ds ;
+318      by   &local_prod_id  &local_prod_ndc   market_beg_dt market_end_dt ;
+319      run;
+320
+321  %mend; *** end of read_in_raw_to_get_sasds ;
+322
+323
+324
+325  %macro prep_fields_to_use(local_in_ds  =,
+326                            local_out_ds =);
+327      data &local_out_ds  ;
+328       set &local_in_ds ;
+329          /*** set field values to consistent upper case       ***/
+330          /*** these are fields we will/can use for ident work ***/
+331          proprietary_nm     =upcase(proprietary_nm     );
+332          non_proprietary_nm =upcase(non_proprietary_nm );
+333          substance_nm       =upcase(substance_nm       );
+334          pharm_classes      =upcase(pharm_classes      );
+335      run;
+336  %mend;
+337
+338
+339  %macro drop_unused_fields(local_in_ds  =,
+340                            local_out_ds =,
+341                            vars_to_drop =);
+342
+343      data &local_out_ds  ;
+344          set &local_in_ds ;
+345          /*** fields we do not need in most work for 2019/11 ***/
+346          drop &vars_to_drop         ;
+347          drop market_cat_nm         ;
+348          drop dosage_form_nm        ;
+349          drop proprietary_nm_sfx    ;
+350          drop active_numert_strn    ;
+351          drop active_ingred_unit    ;
+352          drop product_type_nm       ;
+353          drop labeler_nm            ;
+354          drop route_nm              ;
+355          drop dea_schedule          ;
+356          drop ndc_exclude_flag      ;
+357          drop listing_rec_cert_thru ;
+358          drop market_beg_dt         ;
+359          drop market_end_dt         ;
+360          drop app_number            ;
+361      run;
+362
+363  %mend;
+364
+365
+366  %macro prep_fields_to_scan(local_in_ds  =,
+367                             local_out_ds =);
+368
+369      data &local_out_ds  ;
+370       set &local_in_ds ;
+371           /*** create one long wide var to use for scanning of text ***/
+372           length var_to_scan $8000.;
+373           var_to_scan=trimn(proprietary_nm)     !! '-' !!
+374                       trimn(non_proprietary_nm) !! '-' !!
+375                       trimn(substance_nm)       !! '-' !!
+376                       trimn(pharm_classes);
+377           drop substance_nm       ;
+378           drop proprietary_nm     ;
+379           drop non_proprietary_nm ;
+380      run;
+381
+382  %mend;
+383
+384
+385
+386  %read_in_raw_to_get_sasds(raw_in_data   = &raw_product,
+387                            local_out_ds  = &perm_lib..&out_ds,
+388                            local_prod_id = &prod_id ,
+389                            local_prod_ndc= &prod_ndc
+390                            );
+
+NOTE: The infile "C:\z_data\z_client_jhu\ndc\product.txt" is:
+      Filename=C:\z_data\z_client_jhu\ndc\product.txt,
+      RECFM=V,LRECL=32767,File Size (bytes)=34015358,
+      Last Modified=29Nov2019:12:51:28,
+      Create Time=13Dec2019:21:11:20
+
+NOTE: 105004 records were read from the infile "C:\z_data\z_client_jhu\ndc\product.txt".
+      The minimum record length was 152.
+      The maximum record length was 7528.
+NOTE: The data set NDCPROD.NDC_PRODUCT has 105004 observations and 20 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.96 seconds
+      cpu time            0.68 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PRODUCT.
+NOTE: The data set NDCPROD.NDC_PRODUCT has 105004 observations and 20 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           1.84 seconds
+      cpu time            1.50 seconds
+
+
+391
+392
+393  %prep_fields_to_use(local_in_ds  =&perm_lib..&out_ds,
+394                      local_out_ds =&perm_lib..&out_ds_to_scan
+395                      );
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PRODUCT.
+NOTE: The data set NDCPROD.NDC_PROD_SCAN has 105004 observations and 20 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.27 seconds
+      cpu time            1.18 seconds
+
+
+396
+397  %drop_unused_fields(local_in_ds  =&perm_lib..&out_ds_to_scan,
+398                      local_out_ds =&perm_lib..&out_ds_to_scan,
+399                      vars_to_drop =
+400                           market_cat_nm
+401                           dosage_form_nm
+402                           proprietary_nm_sfx
+403                           active_numert_strn
+404                           active_ingred_unit
+405                           product_type_nm
+406                           labeler_nm
+407                           route_nm
+408                           dea_schedule
+409                           ndc_exclude_flag
+410                           listing_rec_cert_thru
+411                           market_beg_dt
+412                           market_end_dt
+413                           app_number
+414                      );
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set NDCPROD.NDC_PROD_SCAN has 105004 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.17 seconds
+      cpu time            0.79 seconds
+
+
+415
+416
+417  %prep_fields_to_scan(local_in_ds  =&perm_lib..&out_ds_to_scan,
+418                       local_out_ds =&perm_lib..&out_ds_to_scan );
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set NDCPROD.NDC_PROD_SCAN has 105004 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.13 seconds
+      cpu time            0.71 seconds
+
+
+419
+420
+421
+422  proc sort data=&perm_lib..&out_ds_to_scan ;
+423  by  &prod_id  &prod_ndc  ;
+424  run;
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set NDCPROD.NDC_PROD_SCAN has 105004 observations and 4 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           3.98 seconds
+      cpu time            1.29 seconds
+
+
+425
+426  proc sort data=&perm_lib..&out_ds_to_scan nodupkey;
+427  by  &prod_id  &prod_ndc  ;
+428  run;
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set NDCPROD.NDC_PROD_SCAN has 105004 observations and 4 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           2.60 seconds
+      cpu time            1.23 seconds
+
+

@@ -1,0 +1,577 @@
+68   /********************************************************************
+69   * Job Name: crohns_claim_identify_denom_elig_merge_ndc_product_merge.sas
+70   * Job Desc: Identify how many cases in cohort meet criteria for
+71   *           validated case definitions from literature
+72   * See corresponding manuscript: ENTER WHEN READY
+73   * COPYRIGHT (c) 2019 2020 Johns Hopkins University - HutflessLab 2019
+74   ********************************************************************/
+75
+76   /********************************************************************
+77    * INSTRUCTIONS:
+78    * This program uses publicly available CMS sytnthetic data to
+79    * illustrate how one can identify the number of cases of
+80    * Crohn's disease using all of the case definitions associated
+81    * with validation studies in the literature through MONTH 2019.
+82    * You can also run the program on any claims data set that uses
+83    * ICD coding by modifying the variable names in the %let
+84    * statements
+85    *
+86    * You can download the CMS synthetic data and codebooks at
+87    *
+87 ! https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/in
+87 ! dex.html
+88    * We have also downloaded the .SAS and .CSV files here:
+89    * https://jh.box.com/s/6hkk11tc38cdfju21yc2fzbeqvumocjy
+90    *
+91    * This program is divided into various parts that are sequential.
+92    * Part 0: Field Configuration and settings.
+93    *         In this section we can set and configure parts of code
+94    *         that are used from this point on.
+95    * Part 1: Input of Data
+96    *         Types of Data: Claims, Demographic
+97    *         Pt1-A - Repeats for each source
+98    *         to combine into one output dataset
+99    *         This sets up the CMS synthetic dataset
+100   *         for work in this code
+101   *         Pt1-B - Prepares data after input
+102   *
+103   * Part 3: Program that creates each case definition and outputs
+104   *         tables with the case definitions so that the user can
+105   *         compare the number of patients identified from their
+106   *         cohort using each validated case definition.
+107   * NOTE:   that the program assumes that you are using the correct
+108   *         types of datsets (inpatient/outpatient) based on the
+109   *         characteristics of the cohort used to calculate the
+110   *         diagnostic accuracy in each validation study.
+111   *         We have added these characteristics to this program,
+112   *         but it is up to the user to confirm that they are
+113   *         using the definition appropriately.
+114   * Part 4: Set up formats and use an external macro to
+115   *         summarize case definitions in a single macro
+116  *********************************************************************/
+117
+118  /********************************************************************
+119   * Need Help with SAS?
+120   * If you have questions about using SAS or its syntax, we suggest:
+121   *    https://www.sas.com/en_us/learn/academic-programs/resources/free-sas-e-learning.html
+122   *    https://stats.idre.ucla.edu/sas/
+123   *    https://www.lexjansen.com/
+124   * Ask questions in the SAS community: https://communities.sas.com/
+125   *    Take a look if someone has already asked/answer your
+126   *    questions & at how others ask questions before posting your own
+127  ********************************************************************/
+128
+129  %let synthdata="\\win.ad.jhu.edu\cloud\sddesktop$\CMS\CMS synth data";
+130  %let synthdata="C:\z_data\z_client_jhu\puf1";
+131  libname synth &synthdata;
+NOTE: Libref SYNTH was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: C:\z_data\z_client_jhu\puf1
+132  run;
+133
+134  libname ndcprod "C:\z_data\z_client_jhu\ndc_puf_short_term";
+NOTE: Libref NDCPROD was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: C:\z_data\z_client_jhu\ndc_puf_short_term
+135
+136  %let lwork             = work                ;
+137  %let icd9_10_cutoff_dt = '31oct2015'd        ;
+138  %let synth_lib         = synth               ;
+139  %let year1             = 2008                ; /* project year 1 */
+140  %let year2             = 2009                ; /* project year 2 */
+141  %let year3             = 2010                ; /* project year 3 */
+142  %let min_year          = &year1              ; /* first year of project */
+143  %let max_year          = &year3              ; /* max year of project */
+144  %let icd_pfx           = icd                 ; /* common prefix for icd codes */
+145  %let enc_year          = enc_year            ; /* name of variable associated with year of
+145! encounter */
+146  %let diag_i9_pfx       = &icd_pfx.9_dgns_cd_ ; /* diagnosis code prefix - specific to i9  */
+147  %let diag_i10_pfx      = &icd_pfx.10_dgns_cd_; /* diagnosis code prefix - specific to i10 */
+148  %let hcpcs_pfx         = hcpcs_cd_           ; /* hcpcs prefix */
+149  %let diag_min          = 1                   ; /* diag code first val */
+150  %let diag_max          = 10                  ; /* diag code max val */
+151  %let pat_id            = desynpuf_id         ; /* unique patient identifier */
+152  %let clm_beg_dt        = clm_from_dt         ; /* date associated with claim */
+153  %let clm_end_dt        = clm_thru_dt         ; /* claim thru dt */
+154  %let pat_dob           = bene_birth_dt       ; /* add date of birth */
+155  %let pat_gender        = bene_sex_ident_cd   ; /* add in sex/gender variable */
+156  %let pat_race          = bene_race_cd        ; /* beneficiary race code */
+157  %let pat_dod           = bene_death_dt       ; /* beneficiary date of death on beneficiary denom
+157! data */
+158  %let elig_st_dt        = coverage_st_dt      ; /* benefit start date - imputed */
+159  %let flag_icd910       = flag_icd910         ; /* flag indicating if claim is i9 or i10 */
+160
+161  %let flag_uc_pfx       = uc_ ;
+162  %let flag_cd_pfx       = cd_ ;
+163  %let flag_uc_i9        = &flag_uc_pfx.9;
+164  %let flag_cd_i9        = &flag_cd_pfx.9;
+165  %let flag_uc_i10       = &flag_uc_pfx.10;
+166  %let flag_cd_i10       = &flag_cd_pfx.10;
+167
+168  %global temp_ds_pat_pharma ;
+169  %let temp_ds_pat_pharma = synth.prescription_sample_1;
+170
+171  %global temp_ds_ndc_cat ;
+172  %let temp_ds_ndc_cat    = ndcprod.Ndc_prod_cats;
+173
+174  %global  prod_ndc          ;
+175  %let     prod_ndc          =productndc     ;
+176  %global  prod_srvc_id       ;
+177  %let     prod_srvc_id       =prod_srvc_id;
+178  %global  med_ndc_pfx       ;
+179  %let     med_ndc_pfx       = ttl_ ; /** prefix analyst used for med, product pharma flags **/
+180
+181  /*** part 1 section - BEG - START ***/
+182  /*** part 1 section - BEG - START ***/
+183  /*** part 1 section - BEG - START ***/
+184
+185
+186  /*** input claims ***/
+187  %let in_data_clm_a = &synth_lib..carrier_sample_1a   ;
+188  %let in_data_clm_b = &synth_lib..carrier_sample_1b   ;
+189  %let in_data_clm_c = &synth_lib..inpatient_sample_1  ;
+190  %let in_data_clm_d = &synth_lib..outpatient_sample_1 ;
+191  %let tmp_ds_claims = &lwork..diag;
+192
+193  /* Make 1 dataset with all of the patient encounters recorded in ICD codes */
+194
+195  data &tmp_ds_claims (keep = &pat_id
+196                              &clm_beg_dt
+197                              &clm_end_dt
+198                              &icd_pfx.:
+199                              &hcpcs_pfx.:
+200                              );
+201      set
+202      &in_data_clm_a
+203      &in_data_clm_b
+204      &in_data_clm_c (drop = &hcpcs_pfx.14 - &hcpcs_pfx.44)
+205      &in_data_clm_d
+206      ;
+207  run;
+
+NOTE: There were 2370667 observations read from the data set SYNTH.CARRIER_SAMPLE_1A.
+NOTE: There were 2370668 observations read from the data set SYNTH.CARRIER_SAMPLE_1B.
+NOTE: There were 66773 observations read from the data set SYNTH.INPATIENT_SAMPLE_1.
+NOTE: There were 790790 observations read from the data set SYNTH.OUTPATIENT_SAMPLE_1.
+NOTE: The data set WORK.DIAG has 5598898 observations and 64 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4.84 seconds
+      cpu time            2.37 seconds
+
+
+208
+209
+210  /** input demog **/
+211  /* Bring in enrollment, demographics if they are in another file */
+212  /* Some case definitions take into account time under follow-up
+213     before and after Crohn's disease diagnosis.  Make Medicare
+214     coverage start and end variables from the beneficiary
+215     summary file data. The beneficiary summary data is 1 record
+216     per person and a person contributes to each year file that
+217     they were a Medicare beneficiary.  So we are going to make
+218     a Medicare coverage start and end variable for the
+219     entire 2008-2010 period in a 1 record per person dataset to
+220     merge with our 1 record per person Crohn's count dataset
+221     down below.  We could bring the 1 record per person coverage
+222     data to our claims file (crohns1 which is 1 record per
+223     person/clm_id/clm_dt) but we are choosing to wait until
+224     we have made a 1 record per person encounter summary file
+225  */
+226
+227  %macro mbsf(in=, out=, covstart=);
+228
+229  data &out (keep=  &pat_id
+230                    &pat_dob
+231                    &pat_dod
+232                    &pat_race
+233                    &pat_gender
+234                    &elig_st_dt);
+235      set &in;
+236      &elig_st_dt ="01jan&covstart"d;
+237      format &elig_st_dt  yymmdd10.;
+238  run;
+239
+240  proc sort data=&out nodupkey;
+241      by &pat_id;
+242  run;
+243
+244  %mend;
+245
+246
+247  %let inds_bene_2008 =&synth_lib..beneficiary_2008_sample_1 ;
+248  %let inds_bene_2009 =&synth_lib..beneficiary_2009_sample_1 ;
+249  %let inds_bene_2010 =&synth_lib..beneficiary_2010_sample_1 ;
+250
+251  %mbsf(in=&inds_bene_2008, out=&lwork..bene2008, covstart=2008);
+
+NOTE: There were 116352 observations read from the data set SYNTH.BENEFICIARY_2008_SAMPLE_1.
+NOTE: The data set WORK.BENE2008 has 116352 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 116352 observations read from the data set WORK.BENE2008.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.BENE2008 has 116352 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+252  %mbsf(in=&inds_bene_2009, out=&lwork..bene2009, covstart=2009);
+
+NOTE: There were 114538 observations read from the data set SYNTH.BENEFICIARY_2009_SAMPLE_1.
+NOTE: The data set WORK.BENE2009 has 114538 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 114538 observations read from the data set WORK.BENE2009.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.BENE2009 has 114538 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+253  %mbsf(in=&inds_bene_2010, out=&lwork..bene2010, covstart=2010);
+
+NOTE: There were 112754 observations read from the data set SYNTH.BENEFICIARY_2010_SAMPLE_1.
+NOTE: The data set WORK.BENE2010 has 112754 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 112754 observations read from the data set WORK.BENE2010.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.BENE2010 has 112754 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+254
+255  data &lwork..mbsf2008_2010;
+256      update &lwork..bene2010
+257             &lwork..bene2009;
+258      by &pat_id;
+259  run;
+
+NOTE: There were 112754 observations read from the data set WORK.BENE2010.
+NOTE: There were 114538 observations read from the data set WORK.BENE2009.
+NOTE: The data set WORK.MBSF2008_2010 has 114538 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+260
+261  data &lwork..mbsf2008_2010;
+262      update &lwork..mbsf2008_2010
+263             &lwork..bene2008;
+264      by &pat_id;
+265      covend      = max("31dec&max_year"d, &pat_dod );
+266      label covend     = 'end of medicare coverage';
+267      format covend yymmdd10.;
+268  run;
+
+NOTE: There were 114538 observations read from the data set WORK.MBSF2008_2010.
+NOTE: There were 116352 observations read from the data set WORK.BENE2008.
+NOTE: The data set WORK.MBSF2008_2010 has 116352 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+269
+270
+271
+272
+273
+274  /*** input meds ***/
+275  /* Medications */
+276  /** this section requires that an analyst has prepared the
+277      scan NDC data before this section can run
+278      note that older and or existing NDC scanned data
+279      may be included unless you the analyst omit or drop
+280      ndc "ttl_'medication'" fields, vars **/
+281
+282  data &lwork..temp_pat_pharm;
+283      set &temp_ds_pat_pharma (keep= &pat_id &prod_srvc_id);
+284  run;
+
+NOTE: There were 5552421 observations read from the data set SYNTH.PRESCRIPTION_SAMPLE_1.
+NOTE: The data set WORK.TEMP_PAT_PHARM has 5552421 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.39 seconds
+      cpu time            0.37 seconds
+
+
+285
+286  data &lwork..temp_ndc_cat (keep=&prod_srvc_id
+287                                  &med_ndc_pfx.:   /** keeping all fields with ttl_ prefix **/
+288                                  );
+289      set &temp_ds_ndc_cat;
+290          &prod_srvc_id=0;
+291      format &prod_srvc_id 10.;
+292      &prod_srvc_id= &prod_ndc *1 ;
+293      drop &prod_ndc;
+294      *** uncomment to drop specific ndc product fields ;
+295      **  example:  drop  ttl_some_med_name ;
+296      **  note in this code we control prefix with: med_ndc_pfx ;
+297  run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+      1:2
+NOTE: There were 9603 observations read from the data set NDCPROD.NDC_PROD_CATS.
+NOTE: The data set WORK.TEMP_NDC_CAT has 9603 observations and 13 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+298
+299  proc sort data=&lwork..temp_pat_pharm nodupkey;
+300  by &prod_srvc_id &pat_id;
+301  run;
+
+NOTE: There were 5552421 observations read from the data set WORK.TEMP_PAT_PHARM.
+NOTE: 3270 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEMP_PAT_PHARM has 5549151 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           1.68 seconds
+      cpu time            3.29 seconds
+
+
+302
+303  proc summary data=&lwork..temp_ndc_cat nway;
+304  class &prod_srvc_id;
+305  var &med_ndc_pfx.:;
+306  output out=&lwork..temp_ndc_cat (drop=_type_ _freq_)
+307  sum=;
+308  run;
+
+NOTE: There were 9603 observations read from the data set WORK.TEMP_NDC_CAT.
+NOTE: The data set WORK.TEMP_NDC_CAT has 9446 observations and 13 variables.
+NOTE: PROCEDURE SUMMARY used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.04 seconds
+
+
+309
+310  /*** zt testing and evaluating only on antibiotics - low match to other meds **/
+311  data &lwork..tmp_pat_on_meds (keep= &pat_id ttl_anti: /** &med_ndc_pfx.: **/ );
+312      merge &lwork..temp_pat_pharm (in=a)
+313            &lwork..temp_ndc_cat   (in=b);
+314            by &prod_srvc_id;
+315            if a and b;
+316  run;
+
+NOTE: There were 5549151 observations read from the data set WORK.TEMP_PAT_PHARM.
+NOTE: There were 9446 observations read from the data set WORK.TEMP_NDC_CAT.
+NOTE: The data set WORK.TMP_PAT_ON_MEDS has 43 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.35 seconds
+      cpu time            0.34 seconds
+
+
+317
+318  proc sort data= &lwork..tmp_pat_on_meds   nodupkey;
+319  by &pat_id &med_ndc_pfx.:;
+320  run;
+
+NOTE: There were 43 observations read from the data set WORK.TMP_PAT_ON_MEDS.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TMP_PAT_ON_MEDS has 43 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+321
+322  /*** part 1 section - END ***/
+323  /*** part 1 section - END ***/
+324  /*** part 1 section - END ***/
+325
+326
+327
+328
+329  /*** part 2 section - BEG - Start ***/
+330  /*** part 2 section - BEG - Start ***/
+331  /*** part 2 section - BEG - Start ***/
+332
+333  /*** prep claims ***/
+334  %let tmp_ds_crohns = &lwork..crohns1 ;
+335
+336  data &tmp_ds_crohns  (drop= n i j);
+337      set
+338      &tmp_ds_claims
+339      ;
+340
+341      length &diag_i10_pfx.&diag_min  - &diag_i10_pfx.&diag_max  $5.;
+342
+343      /* Create year of diagnosis from the claim date,
+344         year4 is a special format for the cms synthetic data*/
+345          &enc_year = put(&clm_beg_dt ,year4.);
+346
+347      /* Make a few fake ICD-10 codes for CD and UC so we
+348         can check the ICD 10 code
+349         since the dataset is 2008-2010 (pre icd-10) */
+350      /* create icd 10 variable and set to missing */
+351
+352      array new(&diag_max) &diag_i10_pfx.&diag_min  - &diag_i10_pfx.&diag_max ;
+353              DO n = &diag_min TO &diag_max;
+354                      new(n)=' ';
+355      end;
+356      array  dx9  (&diag_max)  &diag_i9_pfx.&diag_min  - &diag_i9_pfx.&diag_max ;
+357      array  dx10 (&diag_max)  &diag_i10_pfx.&diag_min - &diag_i10_pfx.&diag_max;
+358         do i=&diag_min to &diag_max;
+359            if substr(dx9(i),1,3)='250'  then do;
+360                 do j=&diag_min to &diag_max;
+361                    dx10(j)='K500';
+362                    end;
+363                    end;
+364            if substr(dx9(i),1,3)='401' then do;
+365                 do j=&diag_min to &diag_max;
+366                    dx10(j)='K510';
+367                    end;
+368                    end;
+369      end;
+370
+371      /* Indicate if data is icd 9 or 10 for date based on year
+372         (will have all icd-9 because years are 2008-2010 */
+373      &flag_icd910=0;
+374      if &clm_beg_dt  le &icd9_10_cutoff_dt then do;
+375          &flag_icd910=9;
+376      end;
+377      if &clm_beg_dt  gt &icd9_10_cutoff_dt then do;
+378          &flag_icd910=10;
+379      end;
+380      label &flag_icd910 ='indicator if dx code is 9 or 10 based on date of claim';
+381  run;
+
+NOTE: There were 5598898 observations read from the data set WORK.DIAG.
+NOTE: The data set WORK.CROHNS1 has 5598898 observations and 76 variables.
+NOTE: DATA statement used (Total process time):
+      real time           9.82 seconds
+      cpu time            5.79 seconds
+
+
+382
+383
+384
+385  /* count icd9 & icd10 codes */
+386  data &tmp_ds_crohns._count1 (keep = &pat_id
+387                                      &clm_beg_dt
+388                                      &flag_uc_i9
+389                                      &flag_cd_i9
+390                                      &flag_uc_i10
+391                                      &flag_cd_i10
+392                                      );
+393      set
+394      &tmp_ds_crohns
+395      ;
+396
+397      if &min_year <= &enc_year <= &max_year then do;
+398      array  dgns9 (&diag_max) &diag_i9_pfx.&diag_min  - &diag_i9_pfx.&diag_max ;
+399              do i=&diag_min to &diag_max;
+400              if substr(dgns9(i),1,3)='555' then &flag_cd_i9=1;
+401              if substr(dgns9(i),1,3)='556' then &flag_uc_i9=1;
+402              end;
+403      end;
+404
+405      if &min_year <= &enc_year <= &max_year then do;
+406      array  dgns10 (&diag_max) &diag_i10_pfx.&diag_min  - &diag_i10_pfx.&diag_max ;
+407              do t=&diag_min to &diag_max;
+408              if substr(dgns10(t),1,3)='K50' then &flag_cd_i10=1;
+409              if substr(dgns10(t),1,3)='K51' then &flag_uc_i10=1;
+410              end;
+411      end;
+412
+413      if &flag_uc_i9  = . and
+414         &flag_cd_i9  = . and
+415         &flag_uc_i10 = . and
+416         &flag_cd_i10 = .
+417         then delete;
+418  run;
+
+NOTE: Character values have been converted to numeric values at the places given by: (Line):(Column).
+      1:2   1:2
+NOTE: There were 5598898 observations read from the data set WORK.CROHNS1.
+NOTE: The data set WORK.CROHNS1_COUNT1 has 971813 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5.18 seconds
+      cpu time            5.14 seconds
+
+
+419
+420
+421  /**  We want to count the number of visits/encounters for CD / UC.
+422       We are going to count up the encounters for cd in icd-9 and
+423       icd-10 and for uc in icd-9 and icd-10.  We are counting up
+424       UC because some case definitions allow patients to have
+425       encounters for UC despite actually having Crohn's disease
+426       If you have questions about using counts with
+427       a by statement check out:
+428       https://blogs.sas.com/content/iml/2018/02/26/how-to-use-first-variable-and-last-variable-in-
+428! a-by-group-analysis-in-sas.html
+429       */
+430
+431  proc sort data=&tmp_ds_crohns._count1    NODUPKEY;
+432  by &pat_id  &clm_beg_dt &flag_uc_i9  &flag_cd_i9  &flag_uc_i10 &flag_cd_i10 ;
+433  run;
+
+NOTE: There were 971813 observations read from the data set WORK.CROHNS1_COUNT1.
+NOTE: 4447 observations with duplicate key values were deleted.
+NOTE: The data set WORK.CROHNS1_COUNT1 has 967366 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.13 seconds
+      cpu time            0.39 seconds
+
+
+434
+435  proc sort data=&tmp_ds_crohns._count1;
+436  by &pat_id  &clm_beg_dt;
+437  run;
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+438
+439
+440  data  &tmp_ds_crohns._count1 ;
+441      merge  &tmp_ds_crohns._count1   (in=a)
+442             &lwork..tmp_pat_on_meds  (in=b);
+443             by &pat_id;
+444             if a;
+445  run;
+
+NOTE: There were 967366 observations read from the data set WORK.CROHNS1_COUNT1.
+NOTE: There were 43 observations read from the data set WORK.TMP_PAT_ON_MEDS.
+NOTE: The data set WORK.CROHNS1_COUNT1 has 967366 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.14 seconds
+      cpu time            0.14 seconds
+
+
+446
+447  proc freq data=&tmp_ds_crohns._count1 ;
+448  table &med_ndc_pfx.:;
+449  run;
+
+NOTE: Writing HTML Body file: sashtml.htm
+NOTE: There were 967366 observations read from the data set WORK.CROHNS1_COUNT1.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.34 seconds
+      cpu time            0.28 seconds
+
+

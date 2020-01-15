@@ -1,0 +1,716 @@
+260  /********************************************************************
+261  * Job Name: scan_ndc_data_for_products.sas
+262  * Job Desc:
+263  *
+264  * COPYRIGHT (c) 2019 2020 Johns Hopkins University - HutflessLab 2019
+265  ********************************************************************/
+266
+267  %global  perm_lib          ;
+268  %global  lwork             ;
+269  %global  in_ndc_ds         ;
+270
+271  %let     perm_lib          =ndcprod        ;
+272  %let     lwork             =work           ;
+273  %let     in_ndc_ds         =ndc_prod_scan  ;
+274
+275  libname &perm_lib "C:\z_data\z_client_jhu\ndc_puf_short_term";
+NOTE: Libref NDCPROD was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: C:\z_data\z_client_jhu\ndc_puf_short_term
+276
+277  %global  prod_id           ;
+278  %global  prod_ndc          ;
+279  %let     prod_id           =productid      ;
+280  %let     prod_ndc          =productndc     ;
+281
+282  %global  def_path          ;
+283  %let     def_path          =C:\z__projects\jhu_puf\crohnsPUF\code\definitions\;
+284
+285  %global  out_ds_prod_cats  ;
+286  %global  out_ds_prod_nm    ;
+287  %let     out_ds_prod_nm    =ndc_prod_cats ;
+288  %let     out_ds_prod_cats  =&perm_lib..&out_ds_prod_nm;
+289
+290  %global  med_ndc_pfx       ;
+291  %let     med_ndc_pfx       = ttl_ ; /** prefix analyst used for med, product pharma flags **/
+292
+293  /*** code to scan output of ndc product for various drugs we are interested in ***/
+294  /*** you need 1 marco statement per drug of interest ***/
+295  /*** make sure to run this macro first:
+296       ...code\sas\macro_ndc_char_scan_for_drug_name.sas
+297  **********************************************************************************/
+298  %include "C:\z__projects\jhu_puf\crohnsPUF\code\sas\macro_ndc_char_scan_for_drug_name.sas";
+352      /*** output ds name is:   libname(dot) local_out_ds "_" drug_main_cat_name ***/
+353      /*** there will be a single underscore before "drug_main_cat_name" added   ***/
+354
+355
+356  %macro scan_various(out_ds_prefix=  /*** can not exceed  5 bytes ***/,
+357                      flag_name    =  /*** can not exceed 16 bytes ***/,
+358                      txt_file_name=
+359                                          );
+360
+361   %scan_flag_drug_abc(local_in_lib      = &perm_lib,
+362                       local_in_ds       = &in_ndc_ds,
+363                       local_out_lib     = &lwork,
+364                       local_out_ds      = &out_ds_prefix,
+365                       drug_main_cat_name= &flag_name   /*** can not exceed 16 bytes ***/,
+366                       drug_txt_file_you_made =&def_path.&txt_file_name ,
+367                       local_prod_id     = &prod_id ,
+368                       local_prod_ndc    = &prod_ndc
+369                       );
+370
+371       data &lwork..&out_ds_prefix._&flag_name;
+372           set  &lwork..&out_ds_prefix._&flag_name;
+373               drop flag_:;
+374       run;
+375
+376  %mend;
+377
+378
+379
+380  /*** this will take all your prod scans and combine them into a single table of data ***/
+381  /*** the prefix assigned will ensure all these tables are associated or gathered     ***/
+382  /*** together correctly. ***/
+383
+384  %macro scan_overall_process(proj_prefix=);
+385
+386       /*** clean up data from any previous attempt or run of code ***/
+387       /*** note for zt - might want to add in something to make
+388            the ds prefix more risk free ***/
+389       /*** note for zt - can we make the filename risk free from
+390            case sensitivity for - any operating system ***/
+391       proc datasets lib=&perm_lib  nolist;
+392               delete &proj_prefix._:;
+393               quit;
+394       run;
+395
+396
+397       /*** add as many text files for prod scans as you need ***/
+398       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=azat     , txt_file_name=
+398! zt_text_sample_azat.txt   );
+399       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=inflix   , txt_file_name=
+399! zt_text_sample_inflix.txt );
+400       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=adalim   , txt_file_name=
+400! ADALIMUMAB.txt            );
+401       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=antibac  , txt_file_name=
+401! Antibacterial.txt         );
+402       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=certol   , txt_file_name=
+402! CERTOLIZUMAB.txt          );
+403       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=fiveasa  , txt_file_name= FiveASA.txt
+403!               );
+404       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=nataliz  , txt_file_name=
+404! NATALIZUMAB.txt           );
+405       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=sixmp    , txt_file_name= SixMP.txt
+405!               );
+406       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=steriods , txt_file_name= Steroids.txt
+406!               );
+407       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=tofacit  , txt_file_name=
+407! tofacitinib.txt           );
+408       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=ustek    , txt_file_name=
+408! Ustekinumab.txt           );
+409       %scan_various(out_ds_prefix=&proj_prefix  , flag_name=vedoliz  , txt_file_name=
+409! Vedolizumab.txt           );
+410
+411       /*** clean up data from any previous attempt or run of code ***/
+412       proc datasets lib=&perm_lib  nolist;
+413               delete  &out_ds_prod_nm ;
+414               quit;
+415       run;
+416
+417
+418       data &out_ds_prod_cats ;
+419           merge
+420           &lwork..&proj_prefix._:
+421           ;
+422           by &prod_id &prod_ndc ;
+423       run;
+424
+425       proc freq data=&out_ds_prod_cats ;
+426       table &med_ndc_pfx.:;
+427       run;
+428
+429  %mend;
+430
+431  %scan_overall_process(proj_prefix=test );
+NOTE: Writing HTML Body file: sashtml1.htm
+
+NOTE: The file NDCPROD.TEST_: (memtype=DATA) was not found, but appears on a DELETE statement.
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.28 seconds
+      cpu time            0.17 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_AZAT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_AZAT has 22 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.41 seconds
+      cpu time            1.39 seconds
+
+
+
+NOTE: There were 22 observations read from the data set WORK.TEST_AZAT.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 22 observations read from the data set WORK.TEST_AZAT.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_AZAT has 22 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 22 observations read from the data set WORK.TEST_AZAT.
+NOTE: The data set WORK.TEST_AZAT has 22 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_INFLIX (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_INFLIX has 3 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.02 seconds
+      cpu time            0.98 seconds
+
+
+
+NOTE: There were 3 observations read from the data set WORK.TEST_INFLIX.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 3 observations read from the data set WORK.TEST_INFLIX.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_INFLIX has 3 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 3 observations read from the data set WORK.TEST_INFLIX.
+NOTE: The data set WORK.TEST_INFLIX has 3 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: Deleting WORK.TEST_ADALIM (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_ADALIM has 14 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.03 seconds
+      cpu time            1.03 seconds
+
+
+
+NOTE: There were 14 observations read from the data set WORK.TEST_ADALIM.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 14 observations read from the data set WORK.TEST_ADALIM.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_ADALIM has 14 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 14 observations read from the data set WORK.TEST_ADALIM.
+NOTE: The data set WORK.TEST_ADALIM has 14 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_ANTIBAC (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_ANTIBAC has 7713 observations and 22 variables.
+NOTE: DATA statement used (Total process time):
+      real time           11.03 seconds
+      cpu time            11.01 seconds
+
+
+
+NOTE: There were 7713 observations read from the data set WORK.TEST_ANTIBAC.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 7713 observations read from the data set WORK.TEST_ANTIBAC.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_ANTIBAC has 7713 observations and 22 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 7713 observations read from the data set WORK.TEST_ANTIBAC.
+NOTE: The data set WORK.TEST_ANTIBAC has 7713 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: Deleting WORK.TEST_CERTOL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_CERTOL has 2 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.98 seconds
+      cpu time            0.96 seconds
+
+
+
+NOTE: There were 2 observations read from the data set WORK.TEST_CERTOL.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 2 observations read from the data set WORK.TEST_CERTOL.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_CERTOL has 2 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 2 observations read from the data set WORK.TEST_CERTOL.
+NOTE: The data set WORK.TEST_CERTOL has 2 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_FIVEASA (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_FIVEASA has 66 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.00 seconds
+      cpu time            0.98 seconds
+
+
+
+NOTE: There were 66 observations read from the data set WORK.TEST_FIVEASA.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 66 observations read from the data set WORK.TEST_FIVEASA.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_FIVEASA has 66 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 66 observations read from the data set WORK.TEST_FIVEASA.
+NOTE: The data set WORK.TEST_FIVEASA has 66 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_NATALIZ (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_NATALIZ has 1 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.02 seconds
+      cpu time            1.01 seconds
+
+
+
+NOTE: There were 1 observations read from the data set WORK.TEST_NATALIZ.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 1 observations read from the data set WORK.TEST_NATALIZ.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_NATALIZ has 1 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 1 observations read from the data set WORK.TEST_NATALIZ.
+NOTE: The data set WORK.TEST_NATALIZ has 1 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_SIXMP (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_SIXMP has 7 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.29 seconds
+      cpu time            1.28 seconds
+
+
+
+NOTE: There were 7 observations read from the data set WORK.TEST_SIXMP.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 7 observations read from the data set WORK.TEST_SIXMP.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_SIXMP has 7 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 7 observations read from the data set WORK.TEST_SIXMP.
+NOTE: The data set WORK.TEST_SIXMP has 7 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_STERIODS (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_STERIODS has 1894 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.90 seconds
+      cpu time            1.89 seconds
+
+
+
+NOTE: There were 1894 observations read from the data set WORK.TEST_STERIODS.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1894 observations read from the data set WORK.TEST_STERIODS.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_STERIODS has 1894 observations and 7 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1894 observations read from the data set WORK.TEST_STERIODS.
+NOTE: The data set WORK.TEST_STERIODS has 1894 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_TOFACIT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_TOFACIT has 6 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.01 seconds
+      cpu time            1.00 seconds
+
+
+
+NOTE: There were 6 observations read from the data set WORK.TEST_TOFACIT.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 6 observations read from the data set WORK.TEST_TOFACIT.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_TOFACIT has 6 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 6 observations read from the data set WORK.TEST_TOFACIT.
+NOTE: The data set WORK.TEST_TOFACIT has 6 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_USTEK (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_USTEK has 3 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.00 seconds
+      cpu time            0.98 seconds
+
+
+
+NOTE: There were 3 observations read from the data set WORK.TEST_USTEK.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 3 observations read from the data set WORK.TEST_USTEK.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_USTEK has 3 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 3 observations read from the data set WORK.TEST_USTEK.
+NOTE: The data set WORK.TEST_USTEK has 3 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting WORK.TEST_VEDOLIZ (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 105004 observations read from the data set NDCPROD.NDC_PROD_SCAN.
+NOTE: The data set WORK.TEST_VEDOLIZ has 1 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.00 seconds
+      cpu time            0.99 seconds
+
+
+
+NOTE: There were 1 observations read from the data set WORK.TEST_VEDOLIZ.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1 observations read from the data set WORK.TEST_VEDOLIZ.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.TEST_VEDOLIZ has 1 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1 observations read from the data set WORK.TEST_VEDOLIZ.
+NOTE: The data set WORK.TEST_VEDOLIZ has 1 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: Deleting NDCPROD.NDC_PROD_CATS (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 14 observations read from the data set WORK.TEST_ADALIM.
+NOTE: There were 7713 observations read from the data set WORK.TEST_ANTIBAC.
+NOTE: There were 22 observations read from the data set WORK.TEST_AZAT.
+NOTE: There were 2 observations read from the data set WORK.TEST_CERTOL.
+NOTE: There were 66 observations read from the data set WORK.TEST_FIVEASA.
+NOTE: There were 3 observations read from the data set WORK.TEST_INFLIX.
+NOTE: There were 1 observations read from the data set WORK.TEST_NATALIZ.
+NOTE: There were 7 observations read from the data set WORK.TEST_SIXMP.
+NOTE: There were 1894 observations read from the data set WORK.TEST_STERIODS.
+NOTE: There were 6 observations read from the data set WORK.TEST_TOFACIT.
+NOTE: There were 3 observations read from the data set WORK.TEST_USTEK.
+NOTE: There were 1 observations read from the data set WORK.TEST_VEDOLIZ.
+NOTE: The data set NDCPROD.NDC_PROD_CATS has 9603 observations and 15 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 9603 observations read from the data set NDCPROD.NDC_PROD_CATS.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+

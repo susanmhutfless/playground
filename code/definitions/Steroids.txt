@@ -1,0 +1,8 @@
+
+pattern_v01=prxparse("/CORTICOSTEROID/");   /* pharm_classes= CORTICOSTEROID [EPC],CORTICOSTEROID HORMONE RECEPTOR AGONISTS [MOA] */
+pattern_v02=prxparse("/PREDNISONE/");
+pattern_v03=prxparse("/PREDNISOLONE/");
+
+flag_ndc_01 = prxmatch(pattern_v01 , var_to_scan ); if flag_ndc_01 ge 1 then flag_ndc_01=1;
+flag_ndc_02 = prxmatch(pattern_v02 , var_to_scan ); if flag_ndc_02 ge 1 then flag_ndc_02=1;
+flag_ndc_03 = prxmatch(pattern_v03 , var_to_scan ); if flag_ndc_03 ge 1 then flag_ndc_03=1;
