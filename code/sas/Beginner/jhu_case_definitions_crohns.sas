@@ -66,7 +66,7 @@
 /****Part 1: Set up CMS Synthetic data***/
 
 /* Identify where you downloaded synthetic data onto your machine  */
-libname synth "C:\Users\shutfle1\OneDrive - Johns Hopkins\Synthetic datasets";
+libname synth "C:\Users\tghosh2\OneDrive - Johns Hopkins\Synthetic datasets";
 libname synth2 "S:\CMS\CMS synth data";
 run;
 
