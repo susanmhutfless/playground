@@ -8,5 +8,5 @@
 
 ### Useful resources are on the main page. We have numbered the files so that a new user can open them in order and learn more about github, Crohn's and CMS/claims data.  You do not need to read the files about github and Crohn's and CMS data.  You can jump straight into the code folder.
 
-### SAS and R code are available in the **code** folder.  Within the code are instructions on how to download the synthetic data from CMS.  Synthetic data is NOT real data.  You can't publish using this synthetic data source.  But, you can apply what you learned to just about any other claims or adminstrative dataset that has real data.    
+### SAS and R code are available in the **code** folder.  Within the code are instructions on how to download the synthetic data used in the code.  Synthetic data is NOT real data.  You can't publish using this synthetic data source.  But, you can apply what you learned to just about any other claims or adminstrative dataset that has real data.    
 -There is a beginner and advanced version of the SAS code.  If you are new to SAS, use the beginner.  
