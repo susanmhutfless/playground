@@ -9,7 +9,7 @@
 
 ### Guidelines
 - **ACG** https://gi.org/guidelines/ 
-= **AGA** https://www.gastro.org/guidelines/ibd-and-bowel-disorders
+- **AGA** https://www.gastro.org/guidelines/ibd-and-bowel-disorders
 - **ECCO** https://www.ecco-ibd.eu/publications/ecco-guidelines-science/published-ecco-guidelines.html
 
 ### Drugs
