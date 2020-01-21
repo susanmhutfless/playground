@@ -13,4 +13,5 @@
 - For this project on Crohn's disease, please also cite our manuscripts indexed in PubMED
 
 ## **I want to learn more about using GitHub in my workflow**
--See the Word file **Hutfless lab github intro** for our lab's quick start guide (including screenshots) for new users and suggested rules
+-See the Word file **Hutfless lab github intro** for our lab's quick start guide (including screenshots).
+-There are many resources in how to use git online.  Try searching for "git for dummies" and you'll find great resources!
