@@ -1,8 +1,9 @@
-# Playground for new team members
+# Read this first
 
-##This repository has useful resources and code to learn about github and working with claims-based or administrative data-based case definitions of Crohn's disease.
+## This repository has useful resources and code to learn about github and working with claims-based or administrative data-based case definitions of Crohn's disease.
 
-##This is a draft version of the final public repository.  That is why it is called playground.
+## This is a draft version of the final public repository.  That is why it is called playground.
 
-###Useful resources are on this main page.
-###SAS code, including links to downloadable data, are under the code folder then SAS for SAS code.  We will also be providing R code once we are happy with the SAS code.
+### Useful resources are on this main page. We have numbered the files so that a new user can open them in order and learn more about github, Crohn's and CMS/claims data.  You do not need to read the files about github and Crohn's and CMS data.  You can jump straight into the code folder.
+
+### SAS code, including links to downloadable data, are under the **code** folder then SAS for SAS code.  We will also be providing R code once we are happy with the SAS code.  There is a beginner and advanced version of the SAS code.  If you are new to SAS, use the beginner.  We have provided a beginner only version for the R code.
