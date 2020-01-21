@@ -31,7 +31,8 @@
 - **CMS Synthetic data dictionaries** https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/Downloads/SynPUF_Codebook.pdf
 
 ## National Bureau of Economics Research
-- **NDC to Labeler Code Product** https://www.nber.org/data/ndc-to-labelercode-productcode-packagesize-crosswalk.html
+- Useful resource for CMS crosswalks, ICD code to descriptions, etc
+- Useful for drugs **NDC to Labeler Code Product** https://www.nber.org/data/ndc-to-labelercode-productcode-packagesize-crosswalk.html
 
 
 
