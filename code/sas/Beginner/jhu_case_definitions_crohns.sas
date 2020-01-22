@@ -9,13 +9,13 @@
 	
 	/********************************************************************
 	* INSTRUCTIONS:
-	* This program uses publicly available CMS sytnthetic data to
+	* This program uses publicly available CMS synthetic data to
 	* illustrate how one can identify the number of cases of
 	* Crohn's disease using all of the case definitions associated
 	* with validation studies in the literature through MONTH 2020.
 	* You can also run the program on any claims data set that uses
 	* ICD coding by modifying the variable names in the %let
-	* statements.
+	* statements.  You'll learn more about the %let statements in the code.
 	*
 	* You can download the CMS synthetic data and codebooks at
 	* https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/index.html
@@ -23,12 +23,12 @@
 	* We have also downloaded the .SAS and .CSV files here:
 	* https://livejohnshopkins-my.sharepoint.com/:f:/r/personal/shutfle1_jh_edu/Documents/Synthetic%20datasets?csf=1&e=e9XAUd
 	*
-	* This program is divided into various parts that are sequential.
-	* Part 1: Set up the CMS synthetic dataset
+	* This program is divided into parts that you run sequentially.
+	* Part 1: Set up the CMS synthetic datasets
 
-	* Part 2: Insert %let statements for use on any dataset configured as 
-           the CMS Synthetic datasets created in Part 1. Create a 1 record
-			per person analytic file.
+	* Part 2: Insert %let statements for use on any dataset configured like 
+           the CMS Synthetic datasets created in Part 1. At the end of Part 2,
+	   you will have a 1 record per person analytic file.
 	*
 	* Part 3: Program that creates each case definition and outputs
 	*         tables with the case definitions so that the user can
