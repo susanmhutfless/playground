@@ -30,10 +30,11 @@
            the CMS Synthetic datasets created in Part 1. At the end of Part 2,
 	   you will have a 1 record per person analytic file.
 	*
-	* Part 3: Program that creates each case definition and outputs
-	*         tables with the case definitions so that the user can
-	*         compare the number of patients identified from their
-	*         cohort using each validated case definition.
+	* Part 3: This program that creates case definitions for Crohn's disease
+	*	based on the literature as published in our manuscript (line 6).
+	*	This part of the code makes a table for each case definition.
+	*	You can compare the number of patients identified from your
+	*       cohort using each validated case definition.
 	* NOTE:   The program assumes that you are using the correct
 	*         types of datsets (inpatient/outpatient) based on the
 	*         characteristics of the cohort used to calculate the
