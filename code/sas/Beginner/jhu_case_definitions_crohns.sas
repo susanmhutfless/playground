@@ -28,7 +28,8 @@
 
 	* Part 2: Insert %let statements for use on any dataset configured like 
            the CMS Synthetic datasets created in Part 1. At the end of Part 2,
-	   you will have a 1 record per person analytic file.
+	   you will have a 1 record per person analytic file. 
+	  If you have your own dataset AND you understand SAS, you can start at Part 2.
 	*
 	* Part 3: This program creates case definitions for Crohn's disease
 	*	based on the literature as published in our manuscript (line 6).
