@@ -52,8 +52,9 @@
 	*    https://stats.idre.ucla.edu/sas/
 	*    https://www.lexjansen.com/
 	* Ask questions in the SAS community: https://communities.sas.com/
-	*    Take a look if someone has already asked/answer your
-	*    questions & at how others ask questions before posting your own
+	*    Before posting a new question in the SAS community, take a look
+	*	if someone has already asked/answer your questions 
+	*	& at how others ask questions before posting your own (do not screenshot!)
 	* This program was created in SAS Enterprise. SAS 9.4 is known to have
 		difficulties with the death dates.  Use Enterprise if possible.
 	********************************************************************/
