@@ -75,8 +75,9 @@ run;
 	Identify variables (proc contents), look at data directly (proc print), 
 	examine uniqely identified variables (proc sort no dupkey),
 	look at missing numeric variables (proc means nmiss).
-	These should be done for all datasets at the start of every project.
-	Here we give an example of checking 1 of the datasets used to set up the synthetic data*/
+	These steps should be done for all datasets at the start of every project.
+	Here we give an example of checking one of the datasets used to set up the synthetic data*/
+/*If you don't understan what you need to do first, you should review the SAS resources above*/
 
 proc contents data=synth2.carrier_sample_1a;
 run;
