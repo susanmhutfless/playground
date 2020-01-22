@@ -24,12 +24,13 @@
 	* https://livejohnshopkins-my.sharepoint.com/:f:/r/personal/shutfle1_jh_edu/Documents/Synthetic%20datasets?csf=1&e=e9XAUd
 	*
 	* This program is divided into parts that you run sequentially.
+	* If you have your own dataset AND you understand SAS, you can start at Part 2.
 	* Part 1: Set up the CMS synthetic datasets
 
 	* Part 2: Insert %let statements for use on any dataset configured like 
-           the CMS Synthetic datasets created in Part 1. At the end of Part 2,
-	   you will have a 1 record per person analytic file. 
-	  If you have your own dataset AND you understand SAS, you can start at Part 2.
+        *   the CMS Synthetic datasets created in Part 1. At the end of Part 2,
+	*   you will have a 1 record per person analytic file. 
+	* 
 	*
 	* Part 3: This program creates case definitions for Crohn's disease
 	*	based on the literature as published in our manuscript (line 6).
