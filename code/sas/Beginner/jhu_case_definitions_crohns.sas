@@ -69,7 +69,7 @@
 
 /* Identify where you downloaded synthetic data onto your machine  */
 /** You need to EDIT the information inside the quotes!!!!!!!!!!**/
-libname synth "C:\Users\atilak2\OneDrive - Johns Hopkins\Synthetic datasets";
+libname synth "C:\Users\tghosh2\OneDrive - Johns Hopkins\Synthetic datasets";
 libname synth2 "S:\CMS\CMS synth data";
 run;
 
@@ -83,13 +83,13 @@ run;
 
 proc contents data=synth2.carrier_sample_1a;
 run;
-proc print data=synth2.carrier_sample_1a (obs=20);
+proc print data=synth2.carrier_sample_1a (obs=20); /*any specific reason for 20 except less runtime?*/
 run;
 /**Check for duplicates in the datasets **/
 proc sort data=synth2.carrier_sample_1a NODUPKEY out= work.try dupout=dupes;
 by desynpuf_id clm_id clm_thru_dt;
 run;
-proc means nmiss data=synth2.carrier_sample_1a; run;
+proc means nmiss data=synth2.carrier_sample_1a; run; /*this is to see the number of data missing*/
 
 
 /*We are going to read in the claims, enrollment and medications files
@@ -97,7 +97,7 @@ proc means nmiss data=synth2.carrier_sample_1a; run;
 
 /* Concatenate (make 1 dataset) of all claims files: 
 	carrier, inpatient, and outpatient datasets */
-data work.diag;
+data work.diag; /*any reason for 200000?*/
 set
 synth2.carrier_sample_1a (obs=200000)
 synth2.carrier_sample_1b (obs=200000)
@@ -107,7 +107,7 @@ run;
 
 data claims;
     set work.diag;
-/*Look at the year part of the claim date, year4 is a special format for the cms synthetic data*/
+/*Look at the year part of the claim date, year4 is a special format for the cms synthetic data*/  /*it may be useful if we can incorporate all the formats of years*/
     year = put(CLM_FROM_DT,year4.);
     /* make a few fake ICD-10 codes for CD and UC so we can check the ICD 10 code since the dataset is 2008-2010 pre icd-10 */
     if substr(icd9_dgns_cd_1,1,3)='250' then icd10_dgns_cd_1='K500';
@@ -139,7 +139,7 @@ run;
 /*Now read in the enrollment file and make it into a 1 record per person file*/
 /*Use a macro to bring in the enrollment info.  Macros are useful when you are going
 	to do the same thing to 2 datasets with similar setup--like our situation
-	where enrollment info looks the same for each calendar year**/	
+	where enrollment info looks the same for each calendar year**/	/*it may be more clear if we can elaborate a bit more on macro and tell about in & out*/
 /* Why do you we need enrollment info?  
 	   Some case definitions take into account time under follow-up
 	   before and after Crohn's disease diagnosis.  We will make Medicare
@@ -200,7 +200,7 @@ run;
 	label covend     = 'end of medicare coverage';
 	format bene_birth_dt bene_death_dt covstart covend date9.;
 	run;
-	proc print data=mbsf2008_2010 (obs=10); where covend ne '31dec2010'd; run;
+	proc print data=mbsf2008_2010 (obs=10); where covend ne '31dec2010'd; run; /* why everytime different obs?*/
 	/*confirm there are no duplicates*/
 	proc sort data=mbsf2008_2010 nodupkey out=try; by desynpuf_id; run;
 	
