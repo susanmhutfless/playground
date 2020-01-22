@@ -16,27 +16,27 @@
 	* You can also run the program on any claims data set that uses
 	* ICD coding by modifying the variable names in the %let
 	* statements.  You'll learn more about the %let statements in the code.
-	*
+	
 	* You can download the CMS synthetic data and codebooks at
 	* https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/index.html
 	* https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/DESample01
 	* We have also downloaded the .SAS and .CSV files here:
 	* https://livejohnshopkins-my.sharepoint.com/:f:/r/personal/shutfle1_jh_edu/Documents/Synthetic%20datasets?csf=1&e=e9XAUd
-	*
+	
 	* This program is divided into parts that you run sequentially.
 	* If you have your own dataset AND you understand SAS, you can start at Part 2.
+	
 	* Part 1: Set up the CMS synthetic datasets
 
 	* Part 2: Insert %let statements for use on any dataset configured like 
-        *   the CMS Synthetic datasets created in Part 1. At the end of Part 2,
-	*   you will have a 1 record per person analytic file. 
-	* 
-	*
+          	the CMS Synthetic datasets created in Part 1. At the end of Part 2,
+	  	you will have a 1 record per person analytic file.  
+	
 	* Part 3: This program creates case definitions for Crohn's disease
-	*	based on the literature as published in our manuscript (line 6).
-	*	This part of the code makes a table for each case definition.
-	*	You can compare the number of patients identified from your
-	*       cohort using each validated case definition.
+		based on the literature as published in our manuscript (line 6).
+		This part of the code makes a table for each case definition.
+		You can compare the number of patients identified from your
+	        cohort using each validated case definition.
 	* NOTE:   The program assumes that you are using the correct
 	*         types of datsets (inpatient/outpatient) based on the
 	*         characteristics of the cohort used to calculate the
