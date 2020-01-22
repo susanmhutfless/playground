@@ -54,7 +54,8 @@
 	* Ask questions in the SAS community: https://communities.sas.com/
 	*    Before posting a new question in the SAS community, take a look
 	*	if someone has already asked/answer your questions 
-	*	& at how others ask questions before posting your own (do not screenshot!)
+	*	& at how others ask questions before posting your own (do not screenshot,
+	* 	whatever you post should be copy-paste-able!)
 	* This program was created in SAS Enterprise. SAS 9.4 is known to have
 		difficulties with the death dates.  Use Enterprise if possible.
 	********************************************************************/
