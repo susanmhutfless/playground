@@ -29,9 +29,10 @@
 	* Part 1: Set up the CMS synthetic datasets
 
 	* Part 2: Insert %let statements for use on any dataset configured like 
-          	the CMS Synthetic datasets created in Part 1. At the end of Part 2,
-	  	you will have a 1 record per person analytic file.  
-	
+        the CMS Synthetic datasets created in Part 1. At the end of Part 2,
+	  	you will have a 1 record per person analytic file.  This is the standard
+		format for analytic files.
+
 	* Part 3: This program creates case definitions for Crohn's disease
 		based on the literature as published in our manuscript (line 6).
 		This part of the code makes a table for each case definition.
@@ -67,9 +68,9 @@
 	/*** part 1 section - BEG -- START ***/
 /****Part 1: Set up CMS Synthetic data***/
 
-/* Identify where you downloaded synthetic data onto your machine  */
-/** You need to EDIT the information inside the quotes!!!!!!!!!!**/
-libname synth "C:\Users\tghosh2\OneDrive - Johns Hopkins\Synthetic datasets";
+/* Identify where you downloaded synthetic data onto your machine  */ 
+/** You need to EDIT the information inside the quotes or the code won't run !!!!!!!**/
+libname synth "C:\Users\tghosh2\OneDrive - Johns Hopkins\Synthetic datasets"; 
 libname synth2 "S:\CMS\CMS synth data";
 run;
 
@@ -107,7 +108,7 @@ run;
 
 data claims;
     set work.diag;
-/*Look at the year part of the claim date, year4 is a special format for the cms synthetic data*/  /*it may be useful if we can incorporate all the formats of years*/
+/*Look at the year part of the claim date, year4 is a special format for the cms synthetic data*/  
     year = put(CLM_FROM_DT,year4.);
     /* make a few fake ICD-10 codes for CD and UC so we can check the ICD 10 code since the dataset is 2008-2010 pre icd-10 */
     if substr(icd9_dgns_cd_1,1,3)='250' then icd10_dgns_cd_1='K500';
@@ -139,7 +140,7 @@ run;
 /*Now read in the enrollment file and make it into a 1 record per person file*/
 /*Use a macro to bring in the enrollment info.  Macros are useful when you are going
 	to do the same thing to 2 datasets with similar setup--like our situation
-	where enrollment info looks the same for each calendar year**/	/*it may be more clear if we can elaborate a bit more on macro and tell about in & out*/
+	where enrollment info looks the same for each calendar year**/	
 /* Why do you we need enrollment info?  
 	   Some case definitions take into account time under follow-up
 	   before and after Crohn's disease diagnosis.  We will make Medicare
@@ -200,7 +201,7 @@ run;
 	label covend     = 'end of medicare coverage';
 	format bene_birth_dt bene_death_dt covstart covend date9.;
 	run;
-	proc print data=mbsf2008_2010 (obs=10); where covend ne '31dec2010'd; run; /* why everytime different obs?*/
+	proc print data=mbsf2008_2010 (obs=10); where covend ne '31dec2010'd; run; 
 	/*confirm there are no duplicates*/
 	proc sort data=mbsf2008_2010 nodupkey out=try; by desynpuf_id; run;
 	
@@ -208,7 +209,7 @@ run;
 	/* Some case definitions require use of medications */
 
 	/**Download the product and package files from FDA
-		https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory
+		https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory  
 		The SAS converted versions of these files are available 
 			in the public file with the downloaded CMS Synth data.
 		Note: The product and package files are updated regularly. This
@@ -223,7 +224,7 @@ run;
 	   by productid;
 	   length ndc 8.;
 	   ndc_an =compress(ndcpackagecode,"-");
-	   ndc    = ndc_an *1;
+	   ndc    = ndc_an*1;
 	   drop ndc_an;
 	   nonproprietaryname = upcase(nonproprietaryname);
 	   proprietaryname = upcase(proprietaryname);
@@ -336,7 +337,7 @@ run; *the rows here should match the rows in claims;
 	   year4 is a special format for the cms synthetic data*/
 	    year = put(&clm_beg_dt ,year4.);
 /*delete claims outside of time period of interest*/
-	if year<&min_year then delete;
+	if year<&min_year then delete; /*why will year be less than min or greater than max in the first place? because otherwise the definition of min/max will be violated. so in short what is the need of this statement?*/
 	if year>&max_year then delete;
 /* Indicate if data is icd 9 or 10 for date based on year
 	       (will have all icd-9 because years are 2008-2010*/
@@ -387,7 +388,7 @@ run;
 	
 %macro counts(code= , code_count= , date_code= , age_code=, label1= , label2=, label3=);
 
-proc sort data=&lwork..crohns_count1    NODUPKEY;
+proc sort data=&lwork..crohns_count1    NODUPKEY; 
 by &pat_id  &clm_beg_dt &flag_uc_i9  &flag_cd_i9  &flag_uc_i10 &flag_cd_i10 ;
 run;
 
@@ -409,7 +410,7 @@ if first.&pat_id then do;
 	&age_code=(&clm_beg_dt-&pat_dob)/365.25;
     &code_count=0;
 end;
- 	&code_count+1;			/* the counter +1 must be after end so the counter applies beyond first.variable */
+ 	&code_count+1;			/* the counter +1 must be after end so the counter applies beyond first.variable */ 
 
  if last.&pat_id then output;
 
@@ -480,7 +481,7 @@ data &lwork..cduc (keep=&pat_id
     &flag_cd_i10
     &flag_uc_i10
 	&flag_ibd_i10;
-    by &pat_id;
+    by &pat_id; 
     if cd9_count =. then cd9_count=0;
     if uc9_count =. then uc9_count=0;
 	if ibd9_count =. then ibd9_count=0;
@@ -501,13 +502,13 @@ label fuptoCD		= 'Time between start of Medicare coverage and CD diagnosis date'
 label fupafterCD	= 'Time between first CD encounter and death or end of followup'; 
 	       label cd_date_first  =       'Date of first encounter for Crohns';
 	       label ibd_date_first =       'Date of first encounter for IBD ';
-	       label cd9_prop               =     'Proportion of ICD-9 counter that were Crohn encounters';
+	       label cd9_prop               =     'Proportion of ICD-9 counter that were Crohn encounters'; 
 	       label cd10_prop       =     'Proportion of ICD-10 counter that were Crohn encounters';
 		   label ibd9_count = 'Number of IBD encounters (CD or UC) in icd-9';
 		   label ibd10_count = 'Number of IBD encounters (CD or UC) in icd-10';
 run; 
 
-proc print data=cduc (obs=20);
+proc print data=cduc (obs=20); 
 run;
 proc contents data=cduc; run;
 proc means data=&lwork..cduc
