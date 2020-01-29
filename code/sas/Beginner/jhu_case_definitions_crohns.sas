@@ -21,7 +21,8 @@
 	* https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/index.html
 	* https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/DESample01
 	* We have also downloaded the .SAS and .CSV files here:
-	* https://livejohnshopkins-my.sharepoint.com/:f:/r/personal/shutfle1_jh_edu/Documents/Synthetic%20datasets?csf=1&e=e9XAUd
+	* https://livejohnshopkins-my.sharepoint.com/:f:/g/personal/shutfle1_jh_edu/En0Ka4-okBFKm-lFa3ck-OMBlPbAu_Nrps7ZyfXdPnDGbw
+
 	
 	* This program is divided into parts that you run sequentially.
 	* If you have your own dataset AND you understand SAS, you can start at Part 2.
@@ -70,7 +71,6 @@
 /* Identify where you downloaded synthetic data onto your machine  */
 /** You need to EDIT the information inside the quotes!!!!!!!!!!**/
 libname synth "C:\Users\shutfle1\OneDrive - Johns Hopkins\Synthetic datasets";
-libname synth2 "S:\CMS\CMS synth data";
 run;
 
 /* First you need to examine your datasets.  Read the codebook then examine your SAS files.
@@ -81,15 +81,15 @@ run;
 	Here we give an example of checking one of the datasets used to set up the synthetic data */
 /* If you don't understand what you need to do first, you should review the SAS resources */
 
-proc contents data=synth2.carrier_sample_1a;
+proc contents data=synth.carrier_sample_1a;
 run;
-proc print data=synth2.carrier_sample_1a (obs=20);
+proc print data=synth.carrier_sample_1a (obs=20);
 run;
 /**Check for duplicates in the datasets **/
-proc sort data=synth2.carrier_sample_1a NODUPKEY out= work.try dupout=dupes;
+proc sort data=synth.carrier_sample_1a NODUPKEY out= work.try dupout=dupes;
 by desynpuf_id clm_id clm_thru_dt;
 run;
-proc means nmiss data=synth2.carrier_sample_1a; run;
+proc means nmiss data=synth.carrier_sample_1a; run;
 
 
 /*We are going to read in the claims, enrollment and medications files
@@ -99,8 +99,8 @@ proc means nmiss data=synth2.carrier_sample_1a; run;
 	carrier, inpatient, and outpatient datasets */
 data work.diag;
 set
-synth2.carrier_sample_1a (obs=200000)
-synth2.carrier_sample_1b (obs=200000)
+synth.carrier_sample_1a (obs=200000)
+synth.carrier_sample_1b (obs=200000)
 synth.inpatient_sample_1 (drop = HCPCS_CD_14 - HCPCS_CD_44)
 synth.outpatient_sample_1;
 run;
