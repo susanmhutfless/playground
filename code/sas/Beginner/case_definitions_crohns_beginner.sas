@@ -1,7 +1,7 @@
 
 
 /********************************************************************
-	* Job Name: jhu_case_definitions_crohns.sas
+	* Job Name: jhu_case_definitions_crohns_beginner.sas
 	* Job Desc: Identify Crohn's disease cases using claims data
 	* See corresponding manuscript (Table 2): ENTER WHEN READY
 	* Copyright: Johns Hopkins University - HutflessLab 2019
