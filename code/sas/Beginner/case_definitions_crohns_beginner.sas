@@ -13,8 +13,7 @@
 	* Crohn's disease using all of the case definitions associated
 	* with validation studies in the literature through MONTH 2020.
 	* You can also run the program on any claims data set that uses
-	* ICD coding by modifying the variable names in the %let
-	* statements.  You'll learn more about the %let statements in the code.
+	* ICD coding by modifying the variable names to match your dataset.
 	
 	* You can download the CMS synthetic data and codebooks at
 	* https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/SynPUFs/index.html
@@ -100,8 +99,8 @@ proc means nmiss data=synth.carrier_sample_1a; run;
 			faster while you are testing it--remember to remove the obs limit for final */
 data work.diag;
 set
-synth.carrier_sample_1a (obs=200000)
-synth.carrier_sample_1b (obs=200000)
+synth.carrier_sample_1a /*(obs=200000)*/
+synth.carrier_sample_1b /*(obs=200000)*/
 synth.inpatient_sample_1 (drop = HCPCS_CD_14 - HCPCS_CD_44)
 synth.outpatient_sample_1;
 run;
@@ -172,9 +171,7 @@ run;
 	proc sort data=&out nodupkey;
 	by desynpuf_id;
 	run;
-	
-	%mend;
-	
+	%mend; *every macro must have a mend, then the statements below to call the macro with the variables you want;
 	%mbsf(in=synth.beneficiary2008_sample_1, out=bene2008, covstart1=covstart2008, covstart2='01jan2008'd);
 	%mbsf(in=synth.beneficiary2009_sample_1, out=bene2009, covstart1=covstart2009, covstart2='01jan2009'd);
 	%mbsf(in=synth.beneficiary2010_sample_1, out=bene2010, covstart1=covstart2010, covstart2='01jan2010'd);
@@ -248,279 +245,9 @@ data pde_ndc;
 merge pde (in=a) ndc (in=b);
 by ndc;
 if a and b; 
-run;
-	
-	/*** part 1 section - END ***/
-	/*** part 1 section - END ***/
-	/*** part 1 section - END ***/
-	
-	
-	
-	
-	/*** part 2 section - BEG - Start ***/
-	/*** part 2 section - BEG - Start ***/
-	/*** part 2 section - BEG - Start ***/
-/*Use %let so can apply the program to any dataset that is set up in
-	the same format as our CMS Synthetic data (1 record per person
-	enrollment, 1 record per claim, 1 record per medication fill*/
-/*If you are not using the CMS synthetic data, set up your variables to match
-	your dataset and this should work (as long as formatting the same*/
-	
-%let lwork             = work                ;
-%let icd9_10_cutoff_dt = '31oct2015'd        ;
-%let synth_lib         = synth               ;
-%let year1             = 2008                ; /* project year 1 */
-%let year2             = 2009                ; /* project year 2 */
-%let year3             = 2010                ; /* project year 3 */
-%let min_year          = &year1              ; /* first year of project */
-%let max_year          = &year3              ; /* max year of project */
-%let icd_pfx           = icd                 ; /* common prefix for icd codes */
-%let enc_year          = enc_year            ; /* name of variable associated with year of encounter */
-%let diag_i9_pfx       = &icd_pfx.9_dgns_cd_ ; /* diagnosis code prefix - specific to icd9  */
-%let diag_i10_pfx      = &icd_pfx.10_dgns_cd_; /* diagnosis code prefix - specific to icd10 */
-%let hcpcs_pfx         = hcpcs_cd_           ; /* hcpcs prefix */
-%let diag_min          = 1                   ; /* diag code first val */
-%let diag_max          = 10                  ; /* diag code max val */
-%let pat_id            = desynpuf_id         ; /* unique patient identifier */
-%let clm_beg_dt        = clm_from_dt         ; /* date associated with claim */
-%let clm_end_dt        = clm_thru_dt         ; /* claim thru dt */
-%let pat_dob           = bene_birth_dt       ; /* add date of birth */
-%let pat_gender        = bene_sex_ident_cd   ; /* add in sex/gender variable */
-%let pat_race          = bene_race_cd        ; /* beneficiary race code */
-%let pat_dod           = bene_death_dt       ; /* beneficiary date of death on beneficiary denom data */
-%let elig_start_dt        = covstart      ; 		/* benefit start date - imputed */
-%let elig_end_dt        = covend      ; 		/* benefit end date - imputed */
-%let flag_icd910       = flag_icd910         ; /* flag indicating if claim is i9 or i10 */
-%let flag_uc_pfx       = uc_ ;
-%let flag_cd_pfx       = cd_ ;
-%let flag_ibd_pfx       = ibd_ ;
-%let flag_uc_i9        = &flag_uc_pfx.9;
-%let flag_cd_i9        = &flag_cd_pfx.9;
-%let flag_ibd_i9        = &flag_ibd_pfx.9;
-%let flag_uc_i10       = &flag_uc_pfx.10;
-%let flag_cd_i10       = &flag_cd_pfx.10;
-%let flag_ibd_i10       = &flag_ibd_pfx.10;
-%let prescription		= &lwork..pde_ndc; /*this indicates where your 1 record per
-											prescription file is*/
-%let ndc				= ndc;			/*identifier for prescription id*/
-%let prescription_dt	= srvc_dt ;		/*date of prescription fill*/
-
-/*merge claims with beneficiary info*/
-proc sort data=	&lwork..claims; by &pat_id;
-proc sort data= &lwork..mbsf2008_2010; by &pat_id;
-run;
-
-data &lwork..claims2;
-merge 
-&lwork..claims (in=a) 
-&lwork..mbsf2008_2010 (in=b);
-by &pat_id;
-if a and b;
-run; *the rows here should match the rows in claims;
-
-/*identify claims for CD and UC*/
-	data &lwork..crohns_count1 (keep = &pat_id
-									&pat_dob
-									&pat_gender 
-									&pat_race
-									&elig_start_dt
-									&elig_end_dt
-                                    &clm_beg_dt
-                                    &flag_uc_i9
-                                    &flag_cd_i9
-									&flag_ibd_i9
-                                    &flag_uc_i10
-                                    &flag_cd_i10
-									&flag_ibd_i10
-                                    );
-	set
-	&lwork..claims2;* (obs=20000);
-	/* Create year of diagnosis from the claim date,
-	   year4 is a special format for the cms synthetic data*/
-	    year = put(&clm_beg_dt ,year4.);
-/*delete claims outside of time period of interest*/
-	if year<&min_year then delete;
-	if year>&max_year then delete;
-/* Indicate if data is icd 9 or 10 for date based on year
-	       (will have all icd-9 because years are 2008-2010*/
-	        flag_icd910=0;
-	        if &clm_beg_dt  le &icd9_10_cutoff_dt then do;
-	        flag_icd910=9;
-	        end;
-	        if &clm_beg_dt  gt &icd9_10_cutoff_dt then do;
-	        flag_icd910=10;
-	        end;
-	        label flag_icd910='indicator if dx code is 9 or 10 based on date of claim';
-/*identify claims for crohn and ulcerative colitis--only keep those claims*/
-/*need 1 array for ICD-9 and 1 array for ICD-10*/
-    if &min_year <= year <= &max_year then do;
-    array  dgns9 (&diag_max) &diag_i9_pfx.&diag_min  - &diag_i9_pfx.&diag_max ;
-            do i=&diag_min to &diag_max;
-            if substr(dgns9(i),1,3)='555' then &flag_cd_i9=1;
-            if substr(dgns9(i),1,3)='556' then &flag_uc_i9=1;
-			if substr(dgns9(i),1,3) in('555','556') then &flag_ibd_i9=1;
-            end;
-    end;
-
-    if &min_year <= year <= &max_year then do;
-    array  dgns10 (&diag_max) &diag_i10_pfx.&diag_min  - &diag_i10_pfx.&diag_max ;
-            do t=&diag_min to &diag_max;
-            if substr(dgns10(t),1,3)='K50' then &flag_cd_i10=1;
-            if substr(dgns10(t),1,3)='K51' then &flag_uc_i10=1;
-			if substr(dgns10(t),1,3) in('K50','K51') then &flag_ibd_i10=1;
-            end;
-    end;
-
-    if &flag_uc_i9  = . and
-       &flag_cd_i9  = . and
-       &flag_uc_i10 = . and
-       &flag_cd_i10 = .
-       then delete;
-run;
-
-	/**  We want to count the number of visits/encounters for CD / UC.
-	     We are going to count up the encounters for cd in icd-9 and
-	     icd-10 and for uc in icd-9 and icd-10.  We are counting up
-	     UC because some case definitions allow patients to have
-	     encounters for UC despite actually having Crohn's disease
-	     If you have questions about using counts with
-	     a by statement check out:
-	     https://blogs.sas.com/content/iml/2018/02/26/how-to-use-first-variable-and-last-variable-in-a-by-group-analysis-in-sas.html
-	     */
-	
-%macro counts(code= , code_count= , date_code= , age_code=, label1= , label2=, label3=);
-
-proc sort data=&lwork..crohns_count1    NODUPKEY;
-by &pat_id  &clm_beg_dt &flag_uc_i9  &flag_cd_i9  &flag_uc_i10 &flag_cd_i10 ;
-run;
-
-data &code (keep = 					&pat_id 
-					&date_code 
-					&code_count 
-					&age_code
-									&pat_dob
-									&pat_gender 
-									&pat_race
-									&elig_start_dt
-									&elig_end_dt);
-set
-&lwork..crohns_count1;
-by  &pat_id &clm_beg_dt;
-where &code=1; 
-if first.&pat_id then do;
-    &date_code = &clm_beg_dt ; /* if the first. statement was not used then this variable would label every claim_dt as the first cd/uc claim date */
-	&age_code=(&clm_beg_dt-&pat_dob)/365.25;
-    &code_count=0;
-end;
- 	&code_count+1;			/* the counter +1 must be after end so the counter applies beyond first.variable */
-
- if last.&pat_id then output;
-
- label &code_count = &label1;
- label &date_code  = &label2;
- label &age_code=&label3;
- format &date_code date9.;
-run;
-
-/* check to see if the counter worked */
-/* generally people have more than 1
-   encounter---if everyone only has 1
-   encounter then your dataset could be
-   set up as 1 record per person or there is
-   a problem with the counting part of the data step */
-
-proc freq data=&code;
-table &code_count;
-run;
-%mend;  /*** mend corresponds to macro counts above
-		need "%macro counts()" above and "%counts" below to work ***/
-
-%counts(code =	&flag_cd_i9 , code_count = cd9_count ,  
-				date_code = cd9_date_first  , age_code=cd9_age_first ,
-	label1 = 'Number of Crohns encounters in ICD-9', 
-	Label2 = 'Date of first CD diagnosis in ICD-9',
-	label3='Age of first CD diagnosis in ICD-9');
-%counts(code =	&flag_uc_i9 , code_count = uc9_count ,  
-				date_code = uc9_date_first  , age_code=uc9_age_first ,
-	label1 = 'Number of ulcerative colitis encounters in Icd-9', 
-	Label2 = 'Date of first uc diagnosis in Icd-9',
-	label3='Age of first uc diagnosis in Icd-9');
-%counts(code =	&flag_ibd_i9 , code_count = ibd9_count ,  
-				date_code = ibd9_date_first  , age_code=ibd9_age_first ,
-	label1 = 'Number of ulcerative colitis encounters in Icd-9', 
-	Label2 = 'Date of first ibd diagnosis in Icd-9',
-	label3='Age of first ibd diagnosis in Icd-9');
-%counts(code =	&flag_cd_i10 , code_count = cd10_count ,  
-				date_code = cd10_date_first  , age_code=cd10_age_first ,
-	label1 = 'Number of Crohns encounters in ICD-10', 
-	Label2 = 'Date of first CD diagnosis in ICD-10',
-	label3='Age of first CD diagnosis in ICD-10');
-%counts(code =	&flag_uc_i10 , code_count = uc10_count ,  
-				date_code = uc10_date_first  , age_code=uc10_age_first ,
-	label1 = 'Number of ulcerative colitis encounters in Icd-10', 
-	Label2 = 'Date of first uc diagnosis in Icd-10',
-	label3='Age of first uc diagnosis in Icd-10');
-%counts(code =	&flag_ibd_i10 , code_count = ibd10_count ,  
-				date_code = ibd10_date_first  , age_code=ibd10_age_first ,
-	label1 = 'Number of ulcerative colitis encounters in Icd-10', 
-	Label2 = 'Date of first ibd diagnosis in Icd-10',
-	label3='Age of first ibd diagnosis in Icd-10');
-
-
-/**combine datasets for unique days of uc9 and cd9*/
-data &lwork..cduc (keep=&pat_id 
-						&pat_dob
-						&pat_gender 
-						&pat_race
-						&elig_start_dt
-						&elig_end_dt 
-						cd9: uc9: cd10: uc10: ibd9: ibd10:);
-/**keep statement note: anything starting with the variable after the colon will be included*/
-    merge
-    &flag_cd_i9
-    &flag_uc_i9
-	&flag_ibd_i9
-    &flag_cd_i10
-    &flag_uc_i10
-	&flag_ibd_i10;
-    by &pat_id;
-    if cd9_count =. then cd9_count=0;
-    if uc9_count =. then uc9_count=0;
-	if ibd9_count =. then ibd9_count=0;
-    cd9_prop     =cd9_count/ibd9_count;
-    if cd10_count=. then cd10_count=0;
-    if uc10_count=. then uc10_count=0;
-	if ibd10_count=. then ibd10_count=0;
-    cd10_prop    =cd10_count/ibd10_count;
-	cd_date_first  = min(cd9_date_first,cd10_date_first); 
-	ibd_date_first = min(cd9_date_first,cd10_date_first, uc9_date_first,uc10_date_first);
-cd_age_dx   = (cd_date_first - &pat_dob)/365.25;
-ibd_age_dx  = (ibd_date_first - &pat_dob)/365.25;
-fuptoCD    = cd_date_first    - &elig_start_dt ; 
-fupafterCD = &elig_end_dt     - cd_date_first ; 
-label cd_age_dx  	= 'Age at first CD encounter';
-label ibd_age_dx 	= 'AGe at first IBD encounter'; 
-label fuptoCD		= 'Time between start of Medicare coverage and CD diagnosis date';
-label fupafterCD	= 'Time between first CD encounter and death or end of followup'; 
-	       label cd_date_first  =       'Date of first encounter for Crohns';
-	       label ibd_date_first =       'Date of first encounter for IBD ';
-	       label cd9_prop               =     'Proportion of ICD-9 counter that were Crohn encounters';
-	       label cd10_prop       =     'Proportion of ICD-10 counter that were Crohn encounters';
-		   label ibd9_count = 'Number of IBD encounters (CD or UC) in icd-9';
-		   label ibd10_count = 'Number of IBD encounters (CD or UC) in icd-10';
-run; 
-
-proc print data=cduc (obs=20);
-run;
-proc contents data=cduc; run;
-proc means data=&lwork..cduc
-      n mean median p25 p75 min max;
-      var cd9: uc9: cd10: uc10: ibd9: ibd10:;
-run;
-
-/*identify drugs of interest*/
-data pde_ndc2; set &prescription;
-		if pharm_classes = "Aminosalicylate [EPC],Aminosalicylic Acids [CS]"
+*label Crohn's drugs of interest;
+/*make labels for drugs of interest based on pharm classes*/
+		if pharm_classes = "AMINOSALICYLATE [EPC],AMINOSALICYLIC ACIDS [CS]"
 			then drug_5asa=1;
 		if pharm_classes = "CORTICOSTEROID [EPC],CORTICOSTEROID HORMONE RECEPTOR AGONISTS [MOA]"
 			then drug_steroids=1;
@@ -563,40 +290,260 @@ data pde_ndc2; set &prescription;
 	   		drug_vedo=1;
 			drug_biologic=1;
 		end;
-	run;
-	data pde_ndc_abx; set &prescription;
-	where pharm_classes contains "ANTIBACTERIAL"; 
-	drug_antibiotics=1;
-	run;
+if drug_5asa=. and drug_steroids=. and drug_immunomodulator=. and drug_biologic=. then delete; *if you want to keep all drugs then star out this step;
+run;
+proc freq data=pde_ndc; table drug: ; run;
+	
+	/*** part 1 section - END ***/
+	/*** part 1 section - END ***/
+	/*** part 1 section - END ***/
+	
+	
+	
+	
+	/*** part 2 section - BEG - Start ***/
+	/*** part 2 section - BEG - Start ***/
+	/*** part 2 section - BEG - Start ***/
+/*take the datasets that we made/refined above and refmine them further to a 1 record per person analytic file*/
+/*If you are not using the CMS synthetic data, set up your variables and variable formatting to match
+	your dataset*/
 
-data pde_ndc3;
-set pde_ndc2 pde_ndc_abx;
+
+/*merge claims with beneficiary info*/
+proc sort data=	claims; by desynpuf_id;
+proc sort data= mbsf2008_2010; by desynpuf_id;
 run;
 
-/*use a proc print to make sure you have all of your drugs*/
-	proc print data=pde_ndc3; where NONPROPRIETARYNAME contains 'INFLIXIMAB'; run;
-	proc freq data=pde_ndc3; table pharm_classes; run;
+data claims2;
+merge 
+claims (in=a) 
+mbsf2008_2010 (in=b);
+by desynpuf_id;
+if a and b;
+run; *the number of rows here should match the rows in claims;
+
+
+/*identify claims for CD and UC*/
+	data crohns_count1 (keep = desynpuf_id
+									bene_birth_dt 
+									bene_sex_ident_cd 
+									bene_race_cd  
+									covstart
+									covend
+                                    clm_from_dt
+                                    uc_9
+                                    cd_9
+									ibd_9
+                                    uc_10
+                                    cd_10
+									ibd_10
+                                    );
+	set
+	claims2;* (obs=20000);
+	/* Create year of diagnosis from the claim date,
+	   year4 is a special format for the cms synthetic data*/
+	    year = put(clm_from_dt ,year4.);
+/*delete claims outside of time period of interest*/
+	if year<2008 then delete;
+	if year>2010 then delete;
+/* Indicate if data is icd 9 or 10 for date based on year
+	       (will have all icd-9 because years are 2008-2010*/
+	        if clm_from_dt  le '31oct2015'd then do;
+	        flag_icd910=9;
+	        end;
+	        if clm_from_dt  gt '31oct2015'd then do;
+	        flag_icd910=10;
+	        end;
+	        label flag_icd910='indicator if dx code is 9 or 10 based on date of claim';
+/*identify claims for crohn and ulcerative colitis--only keep those claims*/
+/*need 1 array for ICD-9 and 1 array for ICD-10*/
+    if 2008 <= year <= 2010 then do; *set to years you want icd-9 codes applied;
+    array  dgns9 (10) icd9_dgns_cd_1  - icd9_dgns_cd_10 ; *this dataset only has 10 dx codes--others may have more/less;
+            do i=1 to 10;
+            if substr(dgns9(i),1,3)='555' then cd_9=1;
+            if substr(dgns9(i),1,3)='556' then uc_9=1;
+			if substr(dgns9(i),1,3) in('555','556') then ibd_9=1;
+            end;
+    end;
+
+    if 2008 <= year <= 2010 then do; *set to years want icd-10 dx codes applied;
+    array  dgns10 (10) icd10_dgns_cd_1  - icd10_dgns_cd_10 ;
+            do t=1 to 10;
+            if substr(dgns10(t),1,3)='K50' then cd_10=1;
+            if substr(dgns10(t),1,3)='K51' then uc_10=1;
+			if substr(dgns10(t),1,3) in('K50','K51') then ibd_10=1;
+            end;
+    end;
+
+    if uc_9  = . and
+       cd_9  = . and
+       uc_10 = . and
+       cd_10 = .
+       then delete;
+run; *there should be 7,568 if did not limit obs above;
+
+	/**  We want to count the number of visits/encounters for CD / UC.
+	     We are going to count up the encounters for cd in icd-9 and
+	     icd-10 and for uc in icd-9 and icd-10.  We are counting up
+	     UC because some case definitions allow patients to have
+	     encounters for UC despite actually having Crohn's disease.
+	     If you have questions about using counts with
+	     a by statement check out:
+	     https://blogs.sas.com/content/iml/2018/02/26/how-to-use-first-variable-and-last-variable-in-a-by-group-analysis-in-sas.html
+	     */
 	
 %macro counts(code= , code_count= , date_code= , age_code=, label1= , label2=, label3=);
 
-proc sort data=&lwork..pde_ndc3    NODUPKEY;
-by &pat_id  &prescription_dt &ndc drug:;
+proc sort data=crohns_count1    NODUPKEY;
+by desynpuf_id  clm_from_dt uc_9  cd_9  uc_10 cd_10 ;
 run;
 
-data &code (keep = 	&pat_id 
+data &code (keep = 					desynpuf_id 
 					&date_code 
-					&code_count );
+					&code_count 
+					&age_code
+									bene_birth_dt 
+									bene_sex_ident_cd 
+									bene_race_cd  
+									covstart
+									covend);
 set
-&lwork..pde_ndc3;
-by  &pat_id &prescription_dt;
+crohns_count1;
+by  desynpuf_id clm_from_dt;
 where &code=1; 
-if first.&pat_id then do;
-    &date_code = &prescription_dt; /* if the first. statement was not used then this variable would label every claim_dt as the first cd/uc claim date */
+if first.desynpuf_id then do;
+    &date_code = clm_from_dt ; /* if the first. statement was not used then this variable would label every claim_dt as the first cd/uc claim date */
+	&age_code=(clm_from_dt-bene_birth_dt )/365.25;
     &code_count=0;
 end;
  	&code_count+1;			/* the counter +1 must be after end so the counter applies beyond first.variable */
 
- if last.&pat_id then output;
+ if last.desynpuf_id then output;
+
+ label &code_count = &label1;
+ label &date_code  = &label2;
+ label &age_code=&label3;
+ format &date_code date9.;
+run;
+
+/* check to see if the counter worked */
+/* generally people have more than 1
+   encounter---if everyone only has 1
+   encounter then your dataset could be
+   set up as 1 record per person or there is
+   a problem with the counting part of the data step */
+
+proc freq data=&code;
+table &code_count;
+run;
+%mend;  /*** mend corresponds to macro counts above
+		need "%macro counts()" above and "%counts" below to work ***/
+
+%counts(code =	cd_9 , code_count = cd9_count ,  
+				date_code = cd9_date_first  , age_code=cd9_age_first ,
+	label1 = 'Number of Crohns encounters in ICD-9', 
+	Label2 = 'Date of first CD diagnosis in ICD-9',
+	label3='Age of first CD diagnosis in ICD-9');
+%counts(code =	uc_9 , code_count = uc9_count ,  
+				date_code = uc9_date_first  , age_code=uc9_age_first ,
+	label1 = 'Number of ulcerative colitis encounters in Icd-9', 
+	Label2 = 'Date of first uc diagnosis in Icd-9',
+	label3='Age of first uc diagnosis in Icd-9');
+%counts(code =	ibd_9 , code_count = ibd9_count ,  
+				date_code = ibd9_date_first  , age_code=ibd9_age_first ,
+	label1 = 'Number of inflammatory bowel disease encounters in Icd-9', 
+	Label2 = 'Date of first ibd diagnosis in Icd-9',
+	label3='Age of first ibd diagnosis in Icd-9');
+%counts(code =	cd_10 , code_count = cd10_count ,  
+				date_code = cd10_date_first  , age_code=cd10_age_first ,
+	label1 = 'Number of Crohns encounters in ICD-10', 
+	Label2 = 'Date of first CD diagnosis in ICD-10',
+	label3='Age of first CD diagnosis in ICD-10');
+%counts(code =	uc_10 , code_count = uc10_count ,  
+				date_code = uc10_date_first  , age_code=uc10_age_first ,
+	label1 = 'Number of ulcerative colitis encounters in Icd-10', 
+	Label2 = 'Date of first uc diagnosis in Icd-10',
+	label3='Age of first uc diagnosis in Icd-10');
+%counts(code =	ibd_10 , code_count = ibd10_count ,  
+				date_code = ibd10_date_first  , age_code=ibd10_age_first ,
+	label1 = 'Number of inflammatory bowel disease encounters in Icd-10', 
+	Label2 = 'Date of first ibd diagnosis in Icd-10',
+	label3='Age of first ibd diagnosis in Icd-10');
+
+
+/**combine datasets for unique days of uc9 and cd9*/
+data cduc (keep=		desynpuf_id 
+						bene_birth_dt 
+						bene_sex_ident_cd 
+						bene_race_cd  
+						covstart
+						covend 
+						cd9: uc9: cd10: uc10: ibd9: ibd10:);
+/**keep statement note: anything starting with the variable after the colon will be included*/
+    merge
+    cd_9
+    uc_9
+	ibd_9
+    cd_10
+    uc_10
+	ibd_10;
+    by desynpuf_id;
+    if cd9_count =. then cd9_count=0;
+    if uc9_count =. then uc9_count=0;
+	if ibd9_count =. then ibd9_count=0;
+    cd9_prop     =cd9_count/ibd9_count;
+    if cd10_count=. then cd10_count=0;
+    if uc10_count=. then uc10_count=0;
+	if ibd10_count=. then ibd10_count=0;
+    cd10_prop    =cd10_count/ibd10_count;
+	cd_date_first  = min(cd9_date_first,cd10_date_first); 
+	ibd_date_first = min(cd9_date_first,cd10_date_first, uc9_date_first,uc10_date_first);
+cd_age_dx   = (cd_date_first - bene_birth_dt )/365.25;
+ibd_age_dx  = (ibd_date_first - bene_birth_dt )/365.25;
+fuptoCD    = cd_date_first    - covstart ; 
+fupafterCD = covend     - cd_date_first ; 
+label cd_age_dx  	= 'Age at first CD encounter';
+label ibd_age_dx 	= 'AGe at first IBD encounter'; 
+label fuptoCD		= 'Time between start of Medicare coverage and CD diagnosis date';
+label fupafterCD	= 'Time between first CD encounter and death or end of followup'; 
+	       label cd_date_first  =       'Date of first encounter for Crohns';
+	       label ibd_date_first =       'Date of first encounter for IBD ';
+	       label cd9_prop               =     'Proportion of ICD-9 counter that were Crohn encounters';
+	       label cd10_prop       =     'Proportion of ICD-10 counter that were Crohn encounters';
+		   label ibd9_count = 'Number of IBD encounters (CD or UC) in icd-9';
+		   label ibd10_count = 'Number of IBD encounters (CD or UC) in icd-10';
+run; 
+
+proc print data=cduc (obs=20);
+run;
+proc contents data=cduc; run;
+proc means data=cduc
+      n mean median p25 p75 min max;
+      var cd9: uc9: cd10: uc10: ibd9: ibd10:;
+run;
+
+/*Now that we have identified our 1 record per person IBD cohort, let's count IBD drug use*/
+	
+%macro counts(code= , code_count= , date_code= , age_code=, label1= , label2=, label3=);
+
+proc sort data=pde_ndc    NODUPKEY;
+by desynpuf_id  srvc_dt ndc drug:;
+run;
+
+data &code (keep = 	desynpuf_id 
+					&date_code 
+					&code_count );
+set
+pde_ndc;
+by  desynpuf_id srvc_dt;
+where &code=1; 
+if first.desynpuf_id then do;
+    &date_code = srvc_dt; /* if the first. statement was not used then this variable would label every claim_dt as the first cd/uc claim date */
+    &code_count=0;
+end;
+ 	&code_count+1;			/* the counter +1 must be after end so the counter applies beyond first.variable */
+
+ if last.desynpuf_id then output;
 
  label &code_count = &label1;
  label &date_code  = &label2;
@@ -612,7 +559,7 @@ run;
 				date_code = drug_biologic_date_first  , 
 	label1 = 'Number of biologic prescription fills', 
 	Label2 = 'Date of first biologic prescription fill');
-%counts(code =	drug_antibiotics, code_count = drug_antibiotics_count ,  
+*%counts(code =	drug_antibiotics, code_count = drug_antibiotics_count ,  
 				date_code = drug_antibiotics_date_first  , 
 	label1 = 'Number of antibiotics prescription fills', 
 	Label2 = 'Date of first antibiotics prescription fill');
@@ -630,21 +577,21 @@ run;
 	Label2 = 'Date of first 5asa prescription fill');
 /*this macro counter can be used for specific drugs in addition to drug class*/
 	data drugs;
-	merge drug_biologic drug_antibiotics drug_immunomodulator drug_steroids drug_5asa; 
-	by &pat_id;
+	merge drug_biologic /*drug_antibiotics*/ drug_immunomodulator drug_steroids drug_5asa; 
+	by desynpuf_id;
 	run;
 /*make sure there is only 1 record per person (no dupes)*/
-	proc sort data=drugs nodupkey out=try; by &pat_id; run;
+	proc sort data=drugs nodupkey out=try; by desynpuf_id; run;
 
 /*merge drug info with the IBD info*/
-proc sort data=drugs; by &pat_id;
-proc sort data=&lwork..cduc; by &pat_id;
+proc sort data=drugs; by desynpuf_id;
+proc sort data=cduc; by desynpuf_id;
 run;
 
-data &lwork..cduc2;
-merge &lwork..cduc (in=a)
+data cduc2;
+merge cduc (in=a)
 drugs (in=b);
-by &pat_id;
+by desynpuf_id;
 if a;
 run;
 
@@ -675,7 +622,7 @@ run;
 
 data work.DiDomenicantonio2014;
 set
-&lwork..cduc2
+cduc2
 ;
 if cd9_count  <   1 then delete;
 if uc9_count  >=  1 then delete;
@@ -693,17 +640,17 @@ title8  'Sensitivity 82.2%';
         
 
 proc means data=work.DiDomenicantonio2014   n mean median min max;
-var cd9: uc9: cd10: uc10: ibd9: ibd10: &elig_start_dt
-									&elig_end_dt;
+var cd9: uc9: cd10: uc10: ibd9: ibd10: covstart
+									covend;
 run;
 
 proc freq data=work.DiDomenicantonio2014;
-table &pat_gender &pat_race drug:;
+table bene_sex_ident_cd bene_race_cd   drug:;
 run;
 
 /*below have not been checked*/
 data Herrinton2007;
-set &lwork..cduc2;
+set cduc2;
 if cd9_count<1 then delete;
 age_cd_dx=min(cd9_age_first, cd10_age_first);
 /*add duration of followup based on cd date first and end of follow-up variables*/
@@ -1143,7 +1090,7 @@ run;
 
 
 **combine both datasets for unique days of uc and cd;
-data &lwork..cduc2(keep=desynpuf_id cd_count uc_count cd_prop ibd_count);
+data cduc2(keep=desynpuf_id cd_count uc_count cd_prop ibd_count);
 merge uc cd;
 by desynpuf_id;
 if cd_count=. then cd_count=0;
@@ -1157,7 +1104,7 @@ run;
     cd count, uc count, cd&uc count (ibd), and
     proportion of cd count out of ibd count;
 
-proc means data=&lwork..cduc2 n mean median p25 p75 min max;
+proc means data=cduc2 n mean median p25 p75 min max;
 var cd_prop cd_count uc_count ibd_count;
 
 run;
@@ -1172,7 +1119,7 @@ run;
         Sensitivity 94%;
 
 data fonager1996;
-set &lwork..cduc2;
+set cduc2;
 *icd-8 years for the dataset;
 if 1995<=year<=2007 then do;
         *make an array to do for all diag codes 1-10;
@@ -1220,7 +1167,7 @@ table uc_count;
 run;
 
 **combine both datasets for unique days of uc and cd;
-data &lwork..cduc2(keep=esynpuf_id cd_count uc_count cd_prop ibd_count);
+data cduc2(keep=esynpuf_id cd_count uc_count cd_prop ibd_count);
 merge uc cd;
 by esynpuf_id;
 if cd_count=. then cd_count=0;
@@ -1233,7 +1180,7 @@ run;
 uc count, cd&uc count (ibd), and proportion of
 cd count out of ibd count;
 
-proc means data=&lwork..cduc2 n mean median p25 p75 min max;
+proc means data=cduc2 n mean median p25 p75 min max;
 var cd_prop cd_count uc_count ibd_count;
 run;
 
@@ -1304,7 +1251,7 @@ No age restriction
 PPV 90%;
 
 data barton1989;
-set &lwork..cduc2;
+set cduc2;
 *icd-7 years for the dataset;
 if 1995<=year<=2007 then do;
         *make an array to do for all diag codes 1-10;
