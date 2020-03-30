@@ -4,7 +4,6 @@
 	* Job Name: jhu_case_definitions_crohns_beginner.sas
 	* Job Desc: Identify Crohn's disease cases using claims data
 	* See corresponding manuscript (Table 2): ENTER WHEN READY
-	* Copyright: Johns Hopkins University - HutflessLab 2019
 	********************************************************************/
 	
 	/********************************************************************
@@ -44,7 +43,7 @@
 	*         diagnostic accuracy in each validation study.
 	*         We have added these characteristics to the output,
 	*         but it is up to the user to confirm that they are
-	*         using the definition appropriately.
+	*         using the validated definition appropriately.
 
 	*********************************************************************/
 	
@@ -55,7 +54,7 @@
 	*    https://stats.idre.ucla.edu/sas/
 	*    https://www.lexjansen.com/
 	* Ask questions in the SAS community: https://communities.sas.com/
-	*    Before posting a new question in the SAS community, take a look
+	*   Before posting a new question in the SAS community, take a look
 	*	if someone has already asked/answer your questions 
 	*	& at how others ask questions before posting your own (do not screenshot,
 	* 	whatever you post should be copy-paste-able!)
@@ -79,7 +78,7 @@ run;
 	look at missing numeric variables (proc means nmiss).
 	These steps should be done for all datasets at the start of every project.
 	Here we give an example of checking one of the datasets used to set up the synthetic data */
-/* If you don't understand what you need to do first, you should review the SAS resources */
+/* If you don't understand, you should review the SAS resources */
 
 proc contents data=synth.carrier_sample_1a;
 run;
@@ -97,6 +96,8 @@ proc means nmiss data=synth.carrier_sample_1a; run;
 
 /* Concatenate (make 1 dataset) of all claims files: 
 	carrier, inpatient, and outpatient datasets */
+/* note the obs----this limits a dataset to the number of observations specified--do this to make a program run 
+			faster while you are testing it--remember to remove the obs limit for final */
 data work.diag;
 set
 synth.carrier_sample_1a (obs=200000)
@@ -121,19 +122,22 @@ data claims;
 	if substr(icd9_dgns_cd_9,1,3)='250' then icd10_dgns_cd_9='K500';
 	if substr(icd9_dgns_cd_10,1,3)='250' then icd10_dgns_cd_10='K500';
 
-    if icd9_dgns_cd_1='0389' then icd10_dgns_cd_1='K510';
-    if icd9_dgns_cd_2='0389' then icd10_dgns_cd_2='K510';
-	if icd9_dgns_cd_3='0389' then icd10_dgns_cd_3='K510';
-	if icd9_dgns_cd_4='0389' then icd10_dgns_cd_4='K510';
-	if icd9_dgns_cd_5='0389' then icd10_dgns_cd_5='K510';
-	if icd9_dgns_cd_6='0389' then icd10_dgns_cd_6='K510';
-	if icd9_dgns_cd_7='0389' then icd10_dgns_cd_7='K510';
-	if icd9_dgns_cd_8='0389' then icd10_dgns_cd_8='K510';
-	if icd9_dgns_cd_9='0389' then icd10_dgns_cd_9='K510';
-	if icd9_dgns_cd_10='0389' then icd10_dgns_cd_10='K510';
+    if icd9_dgns_cd_1='4019' then icd10_dgns_cd_1='K510';
+    if icd9_dgns_cd_2='4019' then icd10_dgns_cd_2='K510';
+	if icd9_dgns_cd_3='4019' then icd10_dgns_cd_3='K510';
+	if icd9_dgns_cd_4='4019' then icd10_dgns_cd_4='K510';
+	if icd9_dgns_cd_5='4019' then icd10_dgns_cd_5='K510';
+	if icd9_dgns_cd_6='4019' then icd10_dgns_cd_6='K510';
+	if icd9_dgns_cd_7='4019' then icd10_dgns_cd_7='K510';
+	if icd9_dgns_cd_8='4019' then icd10_dgns_cd_8='K510';
+	if icd9_dgns_cd_9='4019' then icd10_dgns_cd_9='K510';
+	if icd9_dgns_cd_10='4019' then icd10_dgns_cd_10='K510';
 run;
 proc freq data=claims;
 table year;
+run;
+proc freq data=claims order= freq;
+table icd9_dgns_cd_1 icd10_dgns_cd_1;
 run;
 
 /*Now read in the enrollment file and make it into a 1 record per person file*/
@@ -152,7 +156,6 @@ run;
 	   merge with claims.  
 	*/
 
-/*EDITS NEEDED: problem with date of death--convert csv to sas again to fix**/
 	%macro mbsf(in=, out=, covstart1=, covstart2=);
 	
 	data &out (keep=  desynpuf_id
@@ -162,7 +165,7 @@ run;
 	                  bene_sex_ident_cd
 	                  &covstart1);
 	set &in;
-	&covstart1=&covstart2;
+	&covstart1=&covstart2; *covstart1 is the variable name, covstart2 is the date that we are assigning to start of coverage;
 	format &covstart1 date9.;
 	run;
 	
