@@ -1,4 +1,0 @@
-
-pattern_v01=prxparse("/ADALIMUMAB/");   /*ADALIMUMAB*/
-
-flag_ndc_01 = prxmatch(pattern_v01 , var_to_scan ); if flag_ndc_01 ge 1 then flag_ndc_01=1;
