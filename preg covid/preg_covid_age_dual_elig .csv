@@ -1,0 +1,8 @@
+age_grp_desc,covid_vx_ind,dual_elig_ind,preg_bene_cnt
+18-<50,0,0,19
+18-<50,0,1,183
+18-<50,1,0,-999
+18-<50,1,1,21
+,,,
+pregnancy identified by DRG code,,,
+considered vaccinated if at least 1 hcpcs codes for a covid vaccine prior to the admission date,,,
