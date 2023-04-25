@@ -293,6 +293,21 @@ quit;
 %ercp (out=ercp_outpatient_21_10, in1=rifq2021.outpatient_revenue_10, in2=rifq2021.outpatient_claims_10);
 %ercp (out=ercp_outpatient_21_11, in1=rifq2021.outpatient_revenue_11, in2=rifq2021.outpatient_claims_11);
 %ercp (out=ercp_outpatient_21_12, in1=rifq2021.outpatient_revenue_12, in2=rifq2021.outpatient_claims_12);
+%ercp (out=ercp_outpatient_22_01, in1=rifq2022.outpatient_revenue_01, in2=rifq2022.outpatient_claims_01);
+%ercp (out=ercp_outpatient_22_02, in1=rifq2022.outpatient_revenue_02, in2=rifq2022.outpatient_claims_02);
+%ercp (out=ercp_outpatient_22_03, in1=rifq2022.outpatient_revenue_03, in2=rifq2022.outpatient_claims_03);
+%ercp (out=ercp_outpatient_22_04, in1=rifq2022.outpatient_revenue_04, in2=rifq2022.outpatient_claims_04);
+%ercp (out=ercp_outpatient_22_05, in1=rifq2022.outpatient_revenue_05, in2=rifq2022.outpatient_claims_05);
+%ercp (out=ercp_outpatient_22_06, in1=rifq2022.outpatient_revenue_06, in2=rifq2022.outpatient_claims_06);
+%ercp (out=ercp_outpatient_22_07, in1=rifq2022.outpatient_revenue_07, in2=rifq2022.outpatient_claims_07);
+%ercp (out=ercp_outpatient_22_08, in1=rifq2022.outpatient_revenue_08, in2=rifq2022.outpatient_claims_08);
+%ercp (out=ercp_outpatient_22_09, in1=rifq2022.outpatient_revenue_09, in2=rifq2022.outpatient_claims_09);
+%ercp (out=ercp_outpatient_22_10, in1=rifq2022.outpatient_revenue_10, in2=rifq2022.outpatient_claims_10);
+%ercp (out=ercp_outpatient_22_11, in1=rifq2022.outpatient_revenue_11, in2=rifq2022.outpatient_claims_11);
+%ercp (out=ercp_outpatient_22_12, in1=rifq2022.outpatient_revenue_12, in2=rifq2022.outpatient_claims_12);
+%ercp (out=ercp_outpatient_23_01, in1=rifq2023.outpatient_revenue_01, in2=rifq2023.outpatient_claims_01);
+%ercp (out=ercp_outpatient_23_02, in1=rifq2023.outpatient_revenue_02, in2=rifq2023.outpatient_claims_02);
+%ercp (out=ercp_outpatient_23_03, in1=rifq2023.outpatient_revenue_03, in2=rifq2023.outpatient_claims_03);
 
 
 *start--identifying from icd procedure;
